@@ -20,7 +20,7 @@ export const facebookService = {
     const scope =
       "pages_show_list,pages_read_engagement,pages_manage_posts,read_insights,pages_messaging,instagram_basic,instagram_content_publish,instagram_manage_insights,instagram_manage_messages,pages_manage_metadata";
 
-    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=token`;
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=token&auth_type=rerequest`;
 
     // ... (rest of login logic remains same)
     // Detect Electron (more robust check)
