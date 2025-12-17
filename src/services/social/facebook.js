@@ -105,6 +105,15 @@ export const facebookService = {
 
       report += `\n2. Permisos concedidos:\n`;
       if (permsData.data) {
+        console.log("🛡️ GRANTED PERMISSIONS:", permsData.data);
+        const hasIgMsg = permsData.data.find(
+          (p) =>
+            p.permission === "instagram_manage_messages" &&
+            p.status === "granted"
+        );
+        if (!hasIgMsg)
+          console.warn("⚠️ MISSING 'instagram_manage_messages' permission!");
+
         permsData.data.forEach((p) => {
           if (p.status === "granted") report += `   - ${p.permission}\n`;
         });
