@@ -2218,6 +2218,8 @@ const SettingsView = ({
              <button 
                onClick={async () => {
                  try {
+                   localStorage.removeItem('meta_page_access_token');
+                   setMetaPageAccessToken('');
                    await facebookService.login();
                  } catch(e) { alert("Error: " + e.message); }
                }}
