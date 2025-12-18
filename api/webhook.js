@@ -46,6 +46,36 @@ export default async function handler(req, res) {
           const text = webhook_event.message?.text;
 
           if (text) {
+            // --- FETCH USER PROFILE ---
+            let profile = {
+              name: `Usuario ${sender_id.slice(0, 4)}`,
+              pic: null,
+            };
+            try {
+              const token = process.env.META_PAGE_ACCESS_TOKEN; // Ensure this is in Vercel ENV
+              if (token) {
+                const fields =
+                  body.object === "instagram"
+                    ? "name,profile_pic"
+                    : "first_name,last_name,profile_pic";
+                const url = `https://graph.facebook.com/v18.0/${sender_id}?fields=${fields}&access_token=${token}`;
+
+                const userRes = await fetch(url);
+                const userData = await userRes.json();
+
+                if (userData.id) {
+                  profile.name =
+                    userData.name ||
+                    `${userData.first_name} ${userData.last_name}`;
+                  profile.pic = userData.profile_pic;
+                } else {
+                  console.warn("Could not fetch profile:", userData);
+                }
+              }
+            } catch (err) {
+              console.error("Profile Fetch Error:", err);
+            }
+
             // INSERT INTO SUPABASE
             const { error } = await supabase.from("inbox_messages").insert([
               {
@@ -53,6 +83,8 @@ export default async function handler(req, res) {
                   body.object === "instagram" ? "instagram" : "facebook",
                 external_id: webhook_event.message.mid,
                 sender_id: sender_id,
+                sender_name: profile.name, // NEW
+                avatar_url: profile.pic, // NEW
                 text: text,
                 is_from_me: false,
                 status: "unread",
