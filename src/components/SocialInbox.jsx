@@ -182,6 +182,26 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
       }
   };
 
+  const handleDeleteConversation = async (senderId) => {
+      if (!window.confirm("¿Estás seguro de que deseas eliminar TODA la conversación con este usuario? Esta acción no se puede deshacer.")) return;
+
+      try {
+          const { error } = await supabase
+              .from('inbox_messages')
+              .delete()
+              .eq('sender_id', senderId);
+          
+          if (error) throw error;
+
+          setMessages(prev => prev.filter(m => m.sender_id !== senderId));
+          if (selectedSenderId === senderId) setSelectedSenderId(null);
+
+      } catch (err) {
+          console.error("Error deleting conversation:", err);
+          alert("Error al eliminar conversación: " + err.message);
+      }
+  };
+
   const filteredConversations = conversations.filter(c => {
       if(filter === 'unread') return c.unreadCount > 0;
       return true;
@@ -236,8 +256,19 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
              <div 
                key={conv.id} 
                onClick={() => setSelectedSenderId(conv.id)}
-               className={`p-4 border-b border-slate-800/50 cursor-pointer hover:bg-slate-800/50 transition-colors ${selectedSenderId === conv.id ? 'bg-slate-800/80 border-l-4 border-l-indigo-500' : 'border-l-4 border-l-transparent'}`}
+               className={`p-4 border-b border-slate-800/50 cursor-pointer hover:bg-slate-800/50 transition-colors relative group ${selectedSenderId === conv.id ? 'bg-slate-800/80 border-l-4 border-l-indigo-500' : 'border-l-4 border-l-transparent'}`}
              >
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteConversation(conv.id);
+                    }}
+                    className="absolute top-2 right-2 p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-900 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+                    title="Eliminar conversación"
+                >
+                    <Trash2 size={14} />
+                </button>
+
                 <div className="flex justify-between items-start mb-1">
                    <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${conv.platform === 'instagram' ? 'bg-linear-to-tr from-yellow-500 to-purple-600' : conv.platform === 'whatsapp' ? 'bg-green-500' : 'bg-blue-600'} overflow-hidden`}>
@@ -245,7 +276,7 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
                       </div>
                       <span className={`font-bold text-sm ${conv.unreadCount > 0 ? 'text-white' : 'text-slate-400'}`}>{conv.user}</span>
                    </div>
-                   <span className="text-[10px] text-slate-500 whitespace-nowrap">{timeAgo(conv.lastMessage.created_at)}</span>
+                   <span className="text-[10px] text-slate-500 whitespace-nowrap pr-4">{timeAgo(conv.lastMessage.created_at)}</span>
                 </div>
                 <p className={`text-xs line-clamp-2 ${conv.unreadCount > 0 ? 'text-slate-200 font-medium' : 'text-slate-500'}`}>
                    {conv.lastMessage.is_from_me ? `Tú: ${conv.lastMessage.text}` : conv.lastMessage.text}
