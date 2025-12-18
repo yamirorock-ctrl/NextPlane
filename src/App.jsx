@@ -1205,10 +1205,19 @@ const CreateStudio = ({
     if (!selectedProduct) return;
     setLoadingTags(true);
     try {
+       // Determine effective tone (Preset instructions or Standard Tone key)
+       let effectiveTone = selectedTone;
+       const presets = JSON.parse(localStorage.getItem('ai_presets') || '[]');
+       const matchingPreset = presets.find(p => p.name === selectedTone);
+       
+       if (matchingPreset) {
+          effectiveTone = matchingPreset.text; 
+       }
+
        const text = await generateHashtags(
          selectedProduct, 
          'instagram', 
-         selectedTone, 
+         effectiveTone, 
          selectedProduct.image_url, // Pass Image
          caption, // Pass Caption Context
          hooksList.join(' | ') // Pass Hooks Context
@@ -2555,6 +2564,15 @@ const AppContent = () => {
       alert("✨ Post cargado en el Estudio. Puedes editarlo o lanzarlo de nuevo.");
   };
 
+  const handleProductRelaunch = (product) => {
+      setSelectedProduct(product);
+      setCaption(''); // Reset caption for fresh start
+      setGeneratedHashtags('');
+      setActiveTab('create');
+      // Optional feedback
+      // alert(`✨ Producto "${product.name}" cargado en el Estudio.`); 
+  };
+
   if (isAuthRedirect) {
      return (
         <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white p-10 text-center animate-in fade-in zoom-in duration-500">
@@ -2679,7 +2697,7 @@ const AppContent = () => {
               metaPageAccessToken={metaPageAccessToken} setMetaPageAccessToken={setMetaPageAccessToken}
               knowledgeBase={knowledgeBase} setKnowledgeBase={setKnowledgeBase}
             />}
-            {activeTab === 'products' && <ProductManager />}
+            {activeTab === 'products' && <ProductManager onRelaunch={handleProductRelaunch} />}
             {activeTab === 'trends' && (
               <div className="h-full flex flex-col items-center justify-center text-center opacity-50 space-y-4">
                 <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center">

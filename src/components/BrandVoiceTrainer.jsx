@@ -19,9 +19,13 @@ const BrandVoiceTrainer = () => {
         try {
             const analysis = await analyzeBrandVoice(text);
             
+            // Ask for a custom name (critical for distinguishing multiple profiles)
+            let customName = prompt("¡Análisis listo! 🥳\n\nPonle un nombre a este estilo de voz (Ej: 'Mi Marca', 'Formal', 'Divertido'):", "Mi Estilo");
+            if (!customName) customName = `Voz ${new Date().toLocaleTimeString()}`;
+
             const newPreset = {
                 id: Date.now(),
-                name: "Mi Voz (Auto)",
+                name: customName,
                 text: analysis.system_instruction,
                 analysis: analysis // Store full analysis for display
             };
@@ -30,7 +34,7 @@ const BrandVoiceTrainer = () => {
             setPresets(newPresets);
             localStorage.setItem('ai_presets', JSON.stringify(newPresets));
 
-            alert(`¡Análisis Completado!\n\nTono: ${analysis.tone_description}\nEmojis: ${analysis.emoji_style}`);
+            alert(`¡Perfil "${customName}" Guardado!\n\nAhora búscalo en el Estudio Viral bajo "Vibe / Tono".`);
             document.getElementById('voice-samples').value = ''; // Clear
         } catch (err) {
             alert("Error: " + err.message);

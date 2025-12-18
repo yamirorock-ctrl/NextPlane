@@ -116,6 +116,63 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
     };
   }, []);
 
+  // 3. Client-Side Profile Fetching (Repair unknown names)
+  useEffect(() => {
+     if(!accessToken) return;
+     
+     const fetchMissingProfiles = async () => {
+         // Find senders with default names "Usuario XXX" or missing avatar
+         const unknownSenders = conversations.filter(c => 
+             c.user.startsWith("Usuario ") && !c.user.includes(" ") // weak check? Better: !c.avatar
+             || !c.avatar
+         );
+         
+         const uniqueUnknowns = [...new Set(unknownSenders.map(c => c.id))];
+         if(uniqueUnknowns.length === 0) return;
+
+         console.log("🔍 Fetching profiles for:", uniqueUnknowns);
+
+         for(const senderId of uniqueUnknowns) {
+             try {
+                // Determine fields based on platform of the conversation
+                const convo = conversations.find(c => c.id === senderId);
+                const isInsta = convo?.platform === 'instagram';
+                const fields = isInsta ? 'name,profile_pic' : 'first_name,last_name,profile_pic';
+                
+                const url = `https://graph.facebook.com/v18.0/${senderId}?fields=${fields}&access_token=${accessToken}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if(data.id) {
+                    const name = data.name || `${data.first_name} ${data.last_name}`;
+                    const pic = data.profile_pic;
+                    
+                    console.log("✅ Resolved:", name);
+                    
+                    // Update Supabase
+                    const { error } = await supabase
+                        .from('inbox_messages')
+                        .update({ sender_name: name, avatar_url: pic })
+                        .eq('sender_id', senderId);
+                        
+                    if(error) console.error("Error updating profile in DB:", error);
+                    
+                    // Update Local State immediately
+                    setMessages(prev => prev.map(m => 
+                        m.sender_id === senderId ? { ...m, sender_name: name, avatar_url: pic } : m
+                    ));
+                }
+             } catch(err) {
+                 console.error("Failed to fetch profile for", senderId, err);
+             }
+         }
+     };
+     
+     // Debounce slightly to avoid spamming on initial load
+     const timer = setTimeout(fetchMissingProfiles, 2000);
+     return () => clearTimeout(timer);
+  }, [conversations.length, accessToken]); // Re-run when new consvos appear
+
   const handleSendMessage = async (e) => {
       e.preventDefault();
       if(!replyText.trim() || !selectedSenderId) return;

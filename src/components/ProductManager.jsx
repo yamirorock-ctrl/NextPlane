@@ -12,10 +12,11 @@ import {
   ImagePlus, 
   Package,
   DollarSign,
-  Tag
+  Tag,
+  Rocket
 } from 'lucide-react';
 
-const ProductManager = () => {
+const ProductManager = ({ onRelaunch }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -201,12 +202,39 @@ const ProductManager = () => {
                     <button 
                       onClick={() => handleOpenDrawer(product)}
                       className="p-2 bg-white text-slate-900 rounded-lg hover:scale-110 transition-transform"
+                      title="Editar"
                     >
                       <Edit2 size={18} />
                     </button>
+                    {onRelaunch && (
+                      <button 
+                        onClick={() => onRelaunch(product)}
+                        className="p-2 bg-indigo-500 text-white rounded-lg hover:scale-110 transition-transform hover:bg-indigo-400"
+                        title="Re-lanzar en Studio"
+                      >
+                         {/* We need Rocket icon, ensure it is imported! It was not in previous import list? Wait, let's check top of file. 
+                             It wasn't imported. I need to add it to imports too if I can.
+                             Ah, I cannot see imports here. I should just use what I have or carefuly re-add import.
+                             I am replacing from line 18, so I miss imports.
+                             Wait, I am replacing lines 18 to 213.
+                             I need to check imports.
+                             Let me update imports first in a separate call or check file again.
+                             I'll assume Rocket is NOT imported and I should use 'Sparkles' or similar if I can't update imports now.
+                             OR I can just do a multi-replace to add import.
+                             Better: Use 'Play' or 'Send' which might be imported... 
+                             Checking Imports: Plus, Search, Edit2, Trash2, X, Save, Loader2, ImagePlus, Package, DollarSign, Tag.
+                             Rocket is NOT imported.
+                             I will add Rocket to imports in a separate replacement or modify this one if possible.
+                             I'll just add Rocket to imports in a previous step? No, I am here.
+                             I will create a separate `multi_replace` for imports and body.
+                         */}
+                         <Rocket size={18} /> 
+                      </button>
+                    )}
                     <button 
                       onClick={() => handleDelete(product.id)}
                       className="p-2 bg-red-500 text-white rounded-lg hover:scale-110 transition-transform"
+                      title="Eliminar"
                     >
                       <Trash2 size={18} />
                     </button>
