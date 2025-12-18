@@ -15,6 +15,8 @@ import SocialInbox from './components/SocialInbox';
 import BriefExport from './components/BriefExport';
 import SocialListening from './components/SocialListening';
 import BrandVoiceTrainer from './components/BrandVoiceTrainer';
+import VideoScriptPanel from './components/VideoScriptPanel';
+import CritiqueModal from './components/CritiqueModal';
 
 
 import { tiktokService } from './services/social/tiktok';
@@ -515,7 +517,7 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
                   <img 
                     src={currentMedia} 
                     alt={product.name} 
-                    className="w-full h-full object-cover animate-pulse-slow"
+                    className="w-full h-full object-cover animate-ken-burns"
                   />
                   <div className="relative z-20 pt-32 px-4 text-center">
                     <h2 className="text-4xl font-black text-white leading-none uppercase drop-shadow-2xl tracking-tighter mb-4 shadow-black">{product.name}</h2>
@@ -653,7 +655,12 @@ const CreateStudio = ({
   products, setProducts,
   selectedProduct, setSelectedProduct,
   caption, setCaption,
-  generatedHashtags, setGeneratedHashtags
+  generatedHashtags, setGeneratedHashtags,
+  // Video Props
+  videoScript, 
+  selectedHook, 
+  setSelectedHook,
+  onGenerateScript
 }) => {
 
   
@@ -1172,6 +1179,13 @@ const CreateStudio = ({
     }
   };
 
+  // Video Script Generator (New Wrapper)
+  const generateVideoScript = async () => {
+      await generateAIHooks();
+      // The generateAIHooks function now sets currentStrategy, which we can map to videoScript structure
+      // But purely for UI separation, let's extract it here if needed, or just rely on currentStrategy
+  };
+
   const generateAICaption = async () => {
     if (!selectedProduct) return;
     setLoadingCaption(true);
@@ -1667,20 +1681,30 @@ const CreateStudio = ({
           </div>
           
 
+          {contentType === 'video' ? (
+            <VideoScriptPanel 
+               strategy={videoScript} 
+               loading={loadingHooks}
+               onGenerate={onGenerateScript}
+               onSelectHook={setSelectedHook}
+               selectedHook={selectedHook} 
+            />
+          ) : (
+            <ViralCoach
+                trendingAudio={trendingAudio}
+                hooks={hooksList}
+                onRegenerateHooks={onGenerateScript}
+                loadingHooks={loadingHooks}
+                onSelectHook={setSelectedHook}
+                onSelectAudio={(audio) => setAudio(audio)}
+                contentType={contentType}
+                selectedTone={selectedTone}
+                onSelectTone={setSelectedTone}
+                strategy={videoScript} // Pass as strategy
+                product={selectedProduct}
+            />
+          )}
 
-          <ViralCoach
-            trendingAudio={trendingAudio}
-            hooks={hooksList}
-            onRegenerateHooks={generateAIHooks}
-            loadingHooks={loadingHooks}
-            onSelectHook={handleHookSelect}
-            onSelectAudio={(audio) => setAudio(audio)}
-            contentType={contentType}
-            selectedTone={selectedTone}
-            onSelectTone={setSelectedTone}
-            strategy={currentStrategy}
-            product={selectedProduct}
-          />
         </div>
 
         {/* Footer Action */}
@@ -2618,6 +2642,7 @@ const AppContent = () => {
     <div className="flex h-screen bg-slate-950 font-sans text-slate-200 overflow-hidden selection:bg-indigo-500/30 selection:text-white">
       {showDownload && <DownloadModal onClose={() => setShowDownload(false)} />}
       {showSuccess && <SuccessModal onClose={() => setShowSuccess(false)} platform={lastPlatform} />}
+      {critique && <CritiqueModal critique={critique} onClose={() => setCritique(null)} />}
 
       <Sidebar 
         activeTab={activeTab} 
@@ -2658,6 +2683,11 @@ const AppContent = () => {
                 setCaption={setCaption}
                 generatedHashtags={generatedHashtags}
                 setGeneratedHashtags={setGeneratedHashtags}
+                // Video Props
+                videoScript={currentStrategy} // We use the strategy object as the script source
+                selectedHook={selectedHook}
+                setSelectedHook={setSelectedHook}
+                onGenerateScript={generateAIHooks} // Reuse the main strategy generator
             />}
             {activeTab === 'dashboard' && (
                 <Dashboard 

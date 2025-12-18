@@ -409,29 +409,33 @@ export const analyzeImageQuality = async (imageUrl) => {
   const prompt = `Actúa como un fotógrafo profesional de productos y experto en eCommerce con 20 años de experiencia.
   Analiza críticamente esta foto de producto para venta online.
 
-  TU MISIÓN: Ayudar al vendedor a mejorar la imagen para vender más. Sé directo, honesto y constructivo.
+  TU MISIÓN: Ayudar al vendedor a mejorar la imagen para vender más. Sé directo, honesto y constructivo. Prioriza la conversión.
 
-  ANALIZA ESTOS 4 PUNTOS:
-  1.  **Iluminación:** ¿Está bien expuesta? ¿Hay sombras duras que tapen detalles? ¿Se ven los colores reales?
-  2.  **Composición:** ¿El producto es el héroe? ¿El fondo distrae? ¿Está centrado?
-  3.  **Nitidez/Calidad:** ¿Se ve pixelado o borroso? ¿Transmite confianza?
-  4.  **Veredicto de Venta:** Del 1 al 100, ¿qué tantas probabilidades tiene de vender esta foto así como está?
+  ANALIZA:
+  1.  **Iluminación & Color**: Exposición, balance de blancos, sombras.
+  2.  **Composición**: Regla de tercios, aire, fondo, distracciones.
+  3.  **Calidad Técnica**: Nitidez, resolución, ruido.
+  4.  **Appeal Comercial**: ¿Da ganas de comprar? ¿Transmite profesionalismo?
 
-  FORMATO DE SALIDA (JSON):
+  FORMATO DE SALIDA (JSON) ESTRICTO:
   {
-      "score": 85,
-      "critique": {
-          "lighting": "Breve comentario sobre luz...",
-          "composition": "Breve comentario sobre encuadre...",
-          "appeal": "Breve comentario sobre atractivo..."
-      },
-      "improvement_tip": "UNA acción concreta y fácil para mejorarla hoy mismo (ej. 'Limpia la lente', 'Usa luz de ventana', 'Recorta el aire de arriba')."
+      "score": 8, // Puntuación honesta del 1 al 10. (1=Desastre, 10=Perfecta para Apple)
+      "strengths": [
+          "Punto fuerte 1 (ej. 'Excelente iluminación natural')",
+          "Punto fuerte 2 (ej. 'El producto destaca sobre el fondo')"
+      ],
+      "weaknesses": [
+          "Punto débil 1 (ej. 'El fondo está desordenado')",
+          "Punto débil 2 (ej. 'La foto está ligeramente movida')"
+      ],
+      "improvement_tips": "Un consejo experto, accionable y específico para arreglar lo más grave AHORA MISMO.",
+      "viral_prediction": "Breve predicción sobre cómo funcionaría esta foto en Feed/Stories (ej. 'Buena para Stories pero falta calidad para Feed')."
   }
   
   Devuelve SOLO JSON válido.`;
 
   try {
-    const parts = [prompt, imagePart]; // Image is required here
+    const parts = [prompt, imagePart];
     const result = await tryGenerateContent(genAI, parts);
     const response = await result.response;
 
@@ -446,14 +450,14 @@ export const analyzeImageQuality = async (imageUrl) => {
     console.error("Image Analysis Error:", error);
     // Fallback Mock
     return {
-      score: 70,
-      critique: {
-        lighting: "No pudimos analizar la luz.",
-        composition: "El encuadre parece estándar.",
-        appeal: "Es una foto aceptable.",
-      },
-      improvement_tip:
-        "Intenta tomar la foto con más luz natural para resaltar los colores.",
+      score: 6,
+      strengths: ["El producto es visible"],
+      weaknesses: [
+        "No pudimos analizar detalles técnicos",
+        "Posible falta de luz",
+      ],
+      improvement_tips: "Intenta tomar la foto nuevamente con mejor luz.",
+      viral_prediction: "Análisis interrumpido.",
     };
   }
 };

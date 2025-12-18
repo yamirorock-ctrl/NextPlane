@@ -4,9 +4,9 @@
   --color-glass-100: rgba(255, 255, 255, 0.1);
   --color-glass-200: rgba(255, 255, 255, 0.2);
   --color-glass-300: rgba(255, 255, 255, 0.05);
-  --color-cosmic-900: #050B14;
-  --color-cosmic-800: #0F1729;
-  
+  --color-cosmic-900: #050b14;
+  --color-cosmic-800: #0f1729;
+
   --font-family-sans: "Outfit", sans-serif;
 
   --animate-fade-in-up: fadeInUp 0.5s ease-out;
@@ -14,17 +14,44 @@
   --animate-pulse-glow: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
   @keyframes fadeInUp {
-    0% { opacity: 0; transform: translateY(10px); }
-    100% { opacity: 1; transform: translateY(0); }
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
   @keyframes shimmer {
-    0% { background-position: -1000px 0; }
-    100% { background-position: 1000px 0; }
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
   }
   @keyframes pulseGlow {
-    0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(99, 102, 241, 0.5); }
-    50% { opacity: 0.8; box-shadow: 0 0 20px rgba(99, 102, 241, 0.8); }
+    0%,
+    100% {
+      opacity: 1;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+    }
+    50% {
+      opacity: 0.8;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.8);
+    }
   }
+  @keyframes kenBurns {
+    0% {
+      transform: scale(1);
+    }
+    100% {
+      transform: scale(1.15) translate(-1%, -1%);
+    }
+  }
+
+  --animate-ken-burns: kenBurns 10s ease-out infinite alternate;
 }
 
 @layer base {
