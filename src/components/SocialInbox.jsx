@@ -162,6 +162,26 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
       }
   };
 
+  const handleDeleteMessage = async (msgId) => {
+      if (!window.confirm("¿Estás seguro de que deseas eliminar este mensaje de forma permanente?")) return;
+
+      try {
+          const { error } = await supabase
+              .from('inbox_messages')
+              .delete()
+              .eq('id', msgId);
+          
+          if (error) throw error;
+
+          // Optimistic update (though realtime might also catch it, it's safer to remove locally too)
+          setMessages(prev => prev.filter(m => m.id !== msgId));
+
+      } catch (err) {
+          console.error("Error deleting message:", err);
+          alert("Error al eliminar: " + err.message);
+      }
+  };
+
   const filteredConversations = conversations.filter(c => {
       if(filter === 'unread') return c.unreadCount > 0;
       return true;
@@ -278,10 +298,20 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
             {/* Chat Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-950/50">
                {selectedConversation.messages.map((msg) => (
-                 <div key={msg.id} className={`flex ${msg.is_from_me ? 'justify-end' : 'justify-start'}`}>
+                 <div key={msg.id} className={`flex ${msg.is_from_me ? 'justify-end' : 'justify-start'} group`}>
                     <div className={`max-w-[70%] rounded-2xl p-4 text-sm ${msg.is_from_me ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'}`}>
                        <p>{msg.text}</p>
-                       <div className="flex justify-end items-center gap-1 mt-1">
+                       <div className="flex justify-end items-center gap-2 mt-1">
+                           <button 
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               handleDeleteMessage(msg.id);
+                             }}
+                             className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                             title="Eliminar mensaje"
+                           >
+                              <Trash2 size={12} />
+                           </button>
                            <p className={`text-[10px] ${msg.is_from_me ? 'text-indigo-200' : 'text-slate-500'}`}>{timeAgo(msg.created_at)}</p>
                            {msg.is_from_me && msg.status === 'read' && <CheckCircle2 size={10} className="text-emerald-400"/>}
                        </div>

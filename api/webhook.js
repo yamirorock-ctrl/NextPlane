@@ -67,10 +67,7 @@ export default async function handler(req, res) {
           }
         }
         return res.status(200).send("EVENT_RECEIVED");
-      }
       } else {
-        return res.status(404).send("Unknown Source");
-      }
         return res.status(404).send("Unknown Source");
       }
     } catch (error) {
