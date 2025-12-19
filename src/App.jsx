@@ -2343,7 +2343,7 @@ const PrivacyPolicy = () => (
 );
 
 const App = () => {
-  const isPrivacy = window.location.href.toLowerCase().includes('privacy');
+  const isPrivacy = window.location.href.toLowerCase().includes('privacy') || window.location.href.toLowerCase().includes('politica');
   
   if (isPrivacy) {
     return <PrivacyPolicy />;

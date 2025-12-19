@@ -1,7 +1,10 @@
 {
   "version": 2,
+  "redirects": [
+    { "source": "/privacy.html", "destination": "/politica.html", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!politica\\.html$).*)", "destination": "/index.html" }
   ]
 }
