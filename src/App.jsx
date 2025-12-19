@@ -661,6 +661,7 @@ const CreateStudio = ({
   selectedHook, 
   setSelectedHook,
   onGenerateScript,
+  setCurrentStrategy, // New Prop
   // Art Critic Props (Lifted)
   onAnalyzeImage,
   analyzingImage
@@ -1155,7 +1156,7 @@ const CreateStudio = ({
       // if (strategy.caption) setCaption(strategy.caption); // DISABLED: Don't overwrite creative caption
       
       // Store the full strategy in a temporary state or just log it for now
-      setCurrentStrategy(strategy);
+      if(setCurrentStrategy) setCurrentStrategy(strategy);
       console.log("Viral Strategy:", strategy);
       alert(`¡Estrategia Viral Generada!\n\nÁngulo: ${strategy.angle}\nConcepto Visual: ${strategy.visual_concept}`);
 
@@ -2348,6 +2349,7 @@ const AppContent = () => {
   // NEW: Image Analysis State (Sales Art Critic) - Lifted here
   const [analyzingImage, setAnalyzingImage] = useState(false);
   const [critique, setCritique] = useState(null);
+  const [currentStrategy, setCurrentStrategy] = useState(null);
 
   const handleAnalyzeImage = async () => {
     const imgToAnalyze = selectedProduct?.image_url || (selectedProduct?.gallery && selectedProduct.gallery[0]);
@@ -2697,6 +2699,7 @@ const AppContent = () => {
                 selectedHook={selectedHook}
                 setSelectedHook={setSelectedHook}
                 onGenerateScript={generateAIHooks} // Reuse the main strategy generator
+                setCurrentStrategy={setCurrentStrategy}
                 onAnalyzeImage={handleAnalyzeImage}
                 analyzingImage={analyzingImage}
             />}
