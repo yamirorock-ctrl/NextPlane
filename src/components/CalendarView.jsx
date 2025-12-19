@@ -13,6 +13,7 @@ import {
 } from 'date-fns';
 import { es } from 'date-fns/locale'; // Spanish locale
 import { ChevronLeft, ChevronRight, MoreHorizontal, Instagram, Facebook } from 'lucide-react';
+import MediaPreview from './MediaPreview';
 
 const CalendarView = ({ posts, onPostClick, onAddClick }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -94,7 +95,7 @@ const CalendarView = ({ posts, onPostClick, onAddClick }) => {
                    >
                      <div className={`w-1 h-6 rounded-full ${post.platform === 'instagram' ? 'bg-linear-to-tr from-yellow-500 to-purple-600' : 'bg-blue-600'}`}></div>
                      {post.image ? (
-                        <img src={post.image} alt="thumb" className="w-6 h-6 rounded bg-black object-cover" />
+                        <MediaPreview src={post.image} className="w-6 h-6 rounded bg-black object-cover" />
                      ) : (
                         <div className="w-6 h-6 rounded bg-slate-900 flex items-center justify-center"><MoreHorizontal size={12}/></div>
                      )}

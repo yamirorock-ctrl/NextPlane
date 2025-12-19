@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import { supabase, storeClient } from './lib/supabase';
 import { generateViralStrategy, generateCaption, initAI, verifyConnection, debugModels, generateHashtags, analyzeBrandVoice, analyzeImageQuality } from './services/ai.js';
-import { facebookService } from './services/social/facebook';
+import * as facebookService from './services/social/facebook';
 import { instagramService } from './services/social/instagram';
 import PageSelector from './components/PageSelector';
 import PlatformSelector from './components/PlatformSelector';
@@ -17,6 +17,7 @@ import SocialListening from './components/SocialListening';
 import BrandVoiceTrainer from './components/BrandVoiceTrainer';
 import VideoScriptPanel from './components/VideoScriptPanel';
 import CritiqueModal from './components/CritiqueModal';
+import MediaPreview from './components/MediaPreview';
 
 
 import { tiktokService } from './services/social/tiktok';
@@ -437,7 +438,7 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
   const isVideo = currentMedia?.endsWith('.mp4') || currentMedia?.endsWith('.webm') || (slides.length === 1 && product?.type === 'video');
 
   return (
-    <div className="mx-auto w-[280px] h-[550px] bg-black rounded-[40px] overflow-hidden border-8 border-slate-900 shadow-2xl relative transition-all duration-300 ring-1 ring-slate-800">
+    <div className="mx-auto w-[280px] h-[620px] bg-black rounded-[40px] overflow-hidden border-8 border-slate-900 shadow-2xl relative transition-all duration-300 ring-1 ring-slate-800">
       {/* Controls Overlay (Only if multiple slides) */}
       <div className="absolute top-12 right-2 z-40 flex flex-col gap-2">
          {slides.length > 1 && (
@@ -588,7 +589,9 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
                <MessageCircle size={22} className="hover:text-blue-500 transition-colors" />
                <Share2 size={22} className="hover:text-green-500 transition-colors" />
             </div>
-            <div className="px-4 pb-4">
+            
+            {/* Scrollable Text Area for Photo Mode */}
+            <div className="px-4 pb-4 overflow-y-auto max-h-[220px] custom-scrollbar">
                <p className="text-xs font-bold mb-1">1,240 Me gusta</p>
                <p className="text-xs text-gray-800 leading-snug">
                  <span className="font-bold mr-1">Next Plane.Oficial</span>
@@ -625,7 +628,7 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
                <p className="font-bold text-sm text-shadow-sm">@NextPlane.Oficial</p>
                <span className="bg-indigo-500 text-white text-[9px] font-bold px-1 rounded-sm">SEGUIR</span>
             </div>
-            <p className="text-xs leading-snug pr-12 line-clamp-2 opacity-90 mb-3">
+            <p className="text-xs leading-snug pr-12 line-clamp-4 opacity-90 mb-3 overflow-y-auto max-h-[100px] no-scrollbar">
               {content || "Escribe tu copy..."} <span className="font-bold">#viral #tienda</span>
             </p>
             {audio && (
@@ -1094,10 +1097,8 @@ const CreateStudio = ({
                 status: isScheduled ? 'scheduled' : 'published'
             };
             if (supabase) {
-                await supabase.from('posts').insert([dbPost]);
-                
                 // Refresh local timeline if needed
-                onSchedule({ ...postData, ...dbPost, product: selectedProduct });
+                onSchedule({ ...postData, product: selectedProduct, image: selectedProduct.image_url, date: finalDate });
             }
         } catch(dbErr) {
             console.error("DB Save Error:", dbErr);
@@ -1898,7 +1899,7 @@ const Dashboard = ({ posts, onRelaunch, onDelete, onRestore, onEmptyTrash }) => 
                  <div className="shrink-0">
                     {post.image ? (
                         <div className={`w-16 h-16 rounded-2xl overflow-hidden border border-slate-700 shadow-lg relative ${view === 'trash' ? 'grayscale opacity-50' : ''}`}>
-                             <img src={post.image} alt="Product" className="w-full h-full object-cover" />
+                             <MediaPreview src={post.image} className="w-full h-full object-cover" />
                              <div className={`absolute bottom-0 right-0 p-1 rounded-tl-lg ${post.platform === 'tiktok' ? 'bg-black' : 'bg-blue-600'}`}>
                                 {post.platform === 'tiktok' ? <span className="text-[8px] font-bold text-white block">Tik</span> : <Facebook size={10} className="text-white"/>}
                              </div>
@@ -2366,6 +2367,7 @@ const AppContent = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastPlatform, setLastPlatform] = useState('');
   const [scheduledPosts, setScheduledPosts] = useState([]);
+  const [isScheduling, setIsScheduling] = useState(false);
   
   // GLOBAL STATE (Lifted from CreateStudio)
   const [products, setProducts] = useState([]);
@@ -2452,7 +2454,6 @@ const AppContent = () => {
   useEffect(() => { localStorage.setItem('meta_page_id', metaPageId); }, [metaPageId]);
   useEffect(() => { localStorage.setItem('meta_page_name', metaPageName); }, [metaPageName]); // Persist Name
   useEffect(() => { localStorage.setItem('meta_page_access_token', metaPageAccessToken); }, [metaPageAccessToken]);
-  useEffect(() => { localStorage.setItem('meta_page_access_token', metaPageAccessToken); }, [metaPageAccessToken]);
 
   useEffect(() => { localStorage.setItem('tiktok_client_key', tiktokKey); }, [tiktokKey]);
   useEffect(() => { localStorage.setItem('tiktok_client_secret', tiktokSecret); }, [tiktokSecret]);
@@ -2508,10 +2509,13 @@ const AppContent = () => {
   }, []);
 
   const handleSchedule = async (postData) => {
+    if (isScheduling) return;
+    setIsScheduling(true);
+
     // 1. Prepare for DB
     const dbPost = {
         platform: postData.targetPlatforms?.tiktok ? 'tiktok' : 'facebook', // Simplified
-        content_type: 'photo', // Default
+        content_type: (postData.image && (postData.image.match(/\.(mp4|webm|mov|ogg)$/i) || postData.image.includes('video'))) ? 'video' : 'photo',
         caption: postData.caption,
         image_url: postData.image,
         scheduled_date: postData.date,
@@ -2532,7 +2536,12 @@ const AppContent = () => {
             product: postData.product // Keep the full object for UI
         };
         
-        setScheduledPosts([newPost, ...scheduledPosts]);
+        setScheduledPosts(prev => {
+           // Prevent duplicates locally by ID check
+           const exists = prev.some(p => p.id === newPost.id);
+           if (exists) return prev;
+           return [newPost, ...prev];
+        });
 
         const activePlatforms = [];
         if (postData.targetPlatforms?.instagram) activePlatforms.push('Instagram');
@@ -2548,6 +2557,8 @@ const AppContent = () => {
 
     } catch(err) {
         alert("Error programando post: " + err.message);
+    } finally {
+        setIsScheduling(false);
     }
   };
 
