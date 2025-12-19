@@ -11,44 +11,7 @@
     />
   </head>
   <body>
-    <script>
-      // SUPER FAIL-SAFE PRIVACY INTERCEPT
-      if (window.location.href.toLowerCase().includes('privacy')) {
-        document.title = "Política de Privacidad - Next Plane";
-        window.addEventListener('load', () => {
-          document.body.innerHTML = `
-            <div style="font-family: -apple-system, system-ui, sans-serif; padding: 50px 20px; max-width: 800px; margin: auto; line-height: 1.7; color: #2d3748; background: #fff;">
-              <h1 style="color: #1a202c; border-bottom: 3px solid #667eea; padding-bottom: 15px; margin-bottom: 30px; font-size: 2.5rem;">Política de Privacidad</h1>
-              <p style="color: #718096; font-style: italic; margin-bottom: 30px;">Última actualización: 18 de Diciembre, 2025</p>
-              
-              <section style="margin-bottom: 40px;">
-                <h2 style="color: #4a5568; margin-top: 30px;">1. Información que recopilamos</h2>
-                <p>Al utilizar "Next Plane", accedemos con tu permiso a tu nombre, foto de perfil e información básica de las páginas de Facebook/Instagram que administras. Usamos esta información únicamente para permitirte publicar contenido y analizar métricas desde nuestra herramienta.</p>
-              </section>
 
-              <section style="margin-bottom: 40px;">
-                <h2 style="color: #4a5568;">2. Uso y Protección de Datos</h2>
-                <p>No almacenamos permanentemente tus contraseñas y no compartimos tus datos con anunciantes ni terceros. Los tokens de acceso se usan exclusivamente bajo tu comando para gestionar tus redes.</p>
-              </section>
-
-              <section style="margin-bottom: 40px;">
-                <h2 style="color: #4a5568;">3. Derechos y Eliminación</h2>
-                <p>Puedes eliminar el acceso de "Next Plane" en cualquier momento desde la sección de 'Integraciones Comerciales' en tu configuración de Facebook. También puedes contactarnos para solicitar la eliminación de cualquier registro residual.</p>
-              </section>
-
-              <div style="background: #ebf8ff; border-left: 5px solid #4299e1; padding: 25px; border-radius: 8px; margin-top: 50px;">
-                <p style="margin: 0; font-weight: bold; color: #2b6cb0;">Contacto de Soporte:</p>
-                <p style="margin: 5px 0 0 0; color: #2c5282;">Email: soporte@nextplane.com</p>
-              </div>
-            </div>
-          `;
-          document.body.style.background = "#fff";
-          document.body.style.display = "block";
-        });
-        // Stop React from loading on this path
-        window.stop();
-      }
-    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
