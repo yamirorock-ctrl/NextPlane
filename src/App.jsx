@@ -1674,7 +1674,7 @@ const CreateStudio = ({
             <VideoScriptPanel 
                strategy={videoScript} 
                loading={loadingHooks}
-               onGenerate={onGenerateScript}
+               onGenerate={generateAIHooks}
                onSelectHook={setSelectedHook}
                selectedHook={selectedHook} 
             />
@@ -1682,7 +1682,7 @@ const CreateStudio = ({
             <ViralCoach
                 trendingAudio={trendingAudio}
                 hooks={hooksList}
-                onRegenerateHooks={onGenerateScript}
+                onRegenerateHooks={generateAIHooks}
                 loadingHooks={loadingHooks}
                 onSelectHook={setSelectedHook}
                 onSelectAudio={(audio) => setAudio(audio)}
@@ -2699,7 +2699,7 @@ const AppContent = () => {
                 videoScript={currentStrategy} // We use the strategy object as the script source
                 selectedHook={selectedHook}
                 setSelectedHook={setSelectedHook}
-                onGenerateScript={generateAIHooks} // Reuse the main strategy generator
+                // onGenerateScript removed (it's internal to CreateStudio)
                 setCurrentStrategy={setCurrentStrategy}
                 onAnalyzeImage={handleAnalyzeImage}
                 analyzingImage={analyzingImage}
