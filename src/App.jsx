@@ -1064,8 +1064,9 @@ const CreateStudio = ({
         // --- WHATSAPP ---
         if (targetPlatforms.whatsapp) {
           try {
-             const message = `${postData.caption}\n\n${selectedProduct.image_url}`;
-             const link = whatsappService.getShareLink(message);
+             // Pass caption and the store link (if it exists)
+             const link = whatsappService.getShareLink(postData.caption, selectedProduct.link);
+             
              // Use Electron shell if available to open external, otherwise window.open
              if (window.electronAPI) {
                  window.electronAPI.openExternal(link);

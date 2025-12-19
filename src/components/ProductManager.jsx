@@ -29,7 +29,8 @@ const ProductManager = ({ onRelaunch }) => {
     name: '',
     price: '',
     category: '',
-    image_url: ''
+    image_url: '',
+    link: ''
   });
 
   useEffect(() => {
@@ -57,7 +58,7 @@ const ProductManager = ({ onRelaunch }) => {
     if (product) {
       setFormData(product);
     } else {
-      setFormData({ id: null, name: '', price: '', category: '', image_url: '' });
+      setFormData({ id: null, name: '', price: '', category: '', image_url: '', link: '' });
     }
     setIsDrawerOpen(true);
   };
@@ -78,10 +79,9 @@ const ProductManager = ({ onRelaunch }) => {
     setSaving(true);
     try {
       const productData = {
-        name: formData.name,
-        price: parseFloat(formData.price),
         category: formData.category,
-        image_url: formData.image_url
+        image_url: formData.image_url,
+        link: formData.link
       };
 
       if (formData.id) {
@@ -324,6 +324,18 @@ const ProductManager = ({ onRelaunch }) => {
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-indigo-500 transition-all"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Link de la Tienda (Opcional)</label>
+                  <input 
+                    type="url" 
+                    value={formData.link || ''}
+                    onChange={(e) => setFormData({...formData, link: e.target.value})}
+                    placeholder="https://tu-tienda.com/producto..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Este link se usará para compartir en WhatsApp.</p>
                 </div>
 
                 <div className="flex-1"></div>
