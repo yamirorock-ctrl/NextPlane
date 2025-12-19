@@ -2323,6 +2323,16 @@ class ErrorBoundary extends React.Component {
 }
 
 const App = () => {
+  // Privacy Policy Routing Intercept (Level 1: Absolute Fail-safe)
+  const isPrivacyPath = 
+    window.location.pathname.toLowerCase().includes('privacy') || 
+    window.location.search.toLowerCase().includes('privacy') ||
+    window.location.hash.toLowerCase().includes('privacy');
+
+  if (isPrivacyPath) {
+      return <PrivacyPolicy />;
+  }
+
   return (
     <ErrorBoundary>
       <AppContent />
@@ -2360,10 +2370,6 @@ const PrivacyPolicy = () => (
 );
 
 const AppContent = () => {
-  // Privacy Policy Routing Intercept (Fail-safe for Vercel/SPA routing)
-  const isPrivacyPath = window.location.pathname.includes('privacy.html') || window.location.pathname.includes('/privacy');
-  if (isPrivacyPath) return <PrivacyPolicy />;
-
   const [activeTab, setActiveTab] = useState('create');
   const [isAuthRedirect, setIsAuthRedirect] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
