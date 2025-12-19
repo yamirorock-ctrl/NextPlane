@@ -660,7 +660,10 @@ const CreateStudio = ({
   videoScript, 
   selectedHook, 
   setSelectedHook,
-  onGenerateScript
+  onGenerateScript,
+  // Art Critic Props (Lifted)
+  onAnalyzeImage,
+  analyzingImage
 }) => {
 
   
@@ -673,25 +676,10 @@ const CreateStudio = ({
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
   // NEW: Image Analysis State (Sales Art Critic)
-  const [analyzingImage, setAnalyzingImage] = useState(false);
-  const [critique, setCritique] = useState(null);
-
-  const handleAnalyzeImage = async () => {
-    // Determine the image to analyze: either selectedProduct.image_url or if gallery exists, the one in view
-    // For simplicity, let's stick to the main image or first gallery image.
-    const imgToAnalyze = selectedProduct?.image_url || (selectedProduct?.gallery && selectedProduct.gallery[0]);
-
-    if(!imgToAnalyze) return alert("Selecciona un producto con imagen");
-    
-    setAnalyzingImage(true);
-    try {
-        const result = await analyzeImageQuality(imgToAnalyze);
-        setCritique(result);
-    } catch(e) {
-        alert("Error analizando imagen: " + e.message);
-    } finally {
-        setAnalyzingImage(false);
-    }
+  // State lifted to App component to share with Modal
+  
+  const handleAnalyzeImage = () => {
+      onAnalyzeImage && onAnalyzeImage();
   };
 
   // Brand Voice Presets (Local for now)
@@ -2354,7 +2342,28 @@ const AppContent = () => {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [caption, setCaption] = useState('');
+
   const [generatedHashtags, setGeneratedHashtags] = useState("");
+  
+  // NEW: Image Analysis State (Sales Art Critic) - Lifted here
+  const [analyzingImage, setAnalyzingImage] = useState(false);
+  const [critique, setCritique] = useState(null);
+
+  const handleAnalyzeImage = async () => {
+    const imgToAnalyze = selectedProduct?.image_url || (selectedProduct?.gallery && selectedProduct.gallery[0]);
+
+    if(!imgToAnalyze) return alert("Selecciona un producto con imagen");
+    
+    setAnalyzingImage(true);
+    try {
+        const result = await analyzeImageQuality(imgToAnalyze);
+        setCritique(result);
+    } catch(e) {
+        alert("Error analizando imagen: " + e.message);
+    } finally {
+        setAnalyzingImage(false);
+    }
+  };
   
   // Persist API Key & Settings
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
@@ -2688,6 +2697,8 @@ const AppContent = () => {
                 selectedHook={selectedHook}
                 setSelectedHook={setSelectedHook}
                 onGenerateScript={generateAIHooks} // Reuse the main strategy generator
+                onAnalyzeImage={handleAnalyzeImage}
+                analyzingImage={analyzingImage}
             />}
             {activeTab === 'dashboard' && (
                 <Dashboard 
