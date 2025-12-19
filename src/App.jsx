@@ -1469,8 +1469,6 @@ const CreateStudio = ({
                       onChange={(e) => {
                          const newName = e.target.value;
                          setSelectedProduct(prev => ({ ...prev, name: newName }));
-                         // Also update in the main list so the grid reflects changes
-                         setProducts(prev => prev.map(p => p.id === selectedProduct.id ? { ...p, name: newName } : p));
                       }}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
                     />
@@ -1486,7 +1484,6 @@ const CreateStudio = ({
                            onChange={(e) => {
                               const newCat = e.target.value;
                               setSelectedProduct(prev => ({ ...prev, category: newCat }));
-                              setProducts(prev => prev.map(p => p.id === selectedProduct.id ? { ...p, category: newCat } : p));
                            }}
                            placeholder="Ej: Ofertas, Verano..."
                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pl-8 text-white focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-xs"
@@ -1504,7 +1501,6 @@ const CreateStudio = ({
                           onChange={(e) => {
                              const newPrice = e.target.value;
                              setSelectedProduct(prev => ({ ...prev, price: newPrice }));
-                             setProducts(prev => prev.map(p => p.id === selectedProduct.id ? { ...p, price: newPrice } : p));
                           }}
                           className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pl-8 text-white focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
                         />
