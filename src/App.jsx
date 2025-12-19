@@ -2330,7 +2330,40 @@ const App = () => {
   );
 };
 
+const PrivacyPolicy = () => (
+    <div className="bg-white min-h-screen text-slate-900 p-8 font-sans max-w-3xl mx-auto shadow-xl my-10 rounded-3xl border border-slate-100 animate-in fade-in zoom-in duration-500">
+       <h1 className="text-4xl font-extrabold text-slate-800 border-b-4 border-indigo-500 pb-4 mb-6">Política de Privacidad</h1>
+       <p className="text-slate-500 mb-8 italic">Última actualización: 18 de Diciembre, 2025</p>
+       
+       <section className="space-y-6">
+         <div>
+           <h2 className="text-2xl font-bold text-slate-700 mb-2">1. Información que recopilamos</h2>
+           <p>Esta aplicación ("Next Plane") puede acceder a tu nombre, foto de perfil y lista de páginas gestionadas a través del inicio de sesión de Facebook e Instagram únicamente para habilitar las funciones de publicación y análisis mencionadas en el servicio.</p>
+         </div>
+         
+         <div>
+           <h2 className="text-2xl font-bold text-slate-700 mb-2">2. Uso de Datos</h2>
+           <p>Los datos se procesan localmente o se utilizan para realizar publicaciones en tu nombre bajo tu comando. <strong>No vendemos ni compartimos tus datos con terceros.</strong></p>
+         </div>
+         
+         <div>
+           <h2 className="text-2xl font-bold text-slate-700 mb-2">3. Derechos del Usuario</h2>
+           <p>Puedes revocar el acceso a tus datos en cualquier momento eliminando la aplicación desde la configuración de integraciones de Facebook o Instagram.</p>
+         </div>
+         
+         <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 mt-10">
+           <p className="font-bold text-indigo-900">Contacto de Soporte:</p>
+           <p className="text-indigo-700">soporte@nextplane.com</p>
+         </div>
+       </section>
+    </div>
+);
+
 const AppContent = () => {
+  // Privacy Policy Routing Intercept (Fail-safe for Vercel/SPA routing)
+  const isPrivacyPath = window.location.pathname.includes('privacy.html') || window.location.pathname.includes('/privacy');
+  if (isPrivacyPath) return <PrivacyPolicy />;
+
   const [activeTab, setActiveTab] = useState('create');
   const [isAuthRedirect, setIsAuthRedirect] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
