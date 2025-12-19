@@ -883,7 +883,7 @@ const CreateStudio = ({
   const [customInstructions, setCustomInstructions] = useState("");
   const [trendingAudio, setTrendingAudio] = useState([]);
   const [hooksList, setHooksList] = useState(DEFAULT_HOOKS);
-  const [currentStrategy, setCurrentStrategy] = useState(null);
+
 
   // Load Trending Audio
   useEffect(() => {
@@ -1808,7 +1808,7 @@ const CreateStudio = ({
           }}
         />
       )}
-      <CritiqueModal critique={critique} onClose={() => setCritique(null)} />
+
     </div>
   );
 };
