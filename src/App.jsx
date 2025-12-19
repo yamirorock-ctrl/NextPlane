@@ -2350,6 +2350,7 @@ const AppContent = () => {
   const [analyzingImage, setAnalyzingImage] = useState(false);
   const [critique, setCritique] = useState(null);
   const [currentStrategy, setCurrentStrategy] = useState(null);
+  const [selectedHook, setSelectedHook] = useState(null);
 
   const handleAnalyzeImage = async () => {
     const imgToAnalyze = selectedProduct?.image_url || (selectedProduct?.gallery && selectedProduct.gallery[0]);
