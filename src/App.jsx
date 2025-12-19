@@ -169,7 +169,7 @@ const Sidebar = ({ activeTab, setActiveTab, mobileMenuOpen, setMobileMenuOpen, o
               <div className="absolute inset-0 bg-indigo-500 blur-lg opacity-50 rounded-full group-hover:opacity-75 transition-opacity"></div>
               <img src="/logo.png" alt="Yaminator" className="w-10 h-10 rounded-full relative z-10 border-2 border-indigo-500/50 shadow-inner object-cover bg-slate-950" />
             </div>
-            <span className="bg-linear-to-r from-white to-slate-400 bg-clip-text text-transparent transform translate-y-0.5">Yaminator</span>
+            <span className="bg-linear-to-r from-white to-slate-400 bg-clip-text text-transparent transform translate-y-0.5">Yaminator v2.2</span>
           </div>
           <button onClick={() => setMobileMenuOpen(false)} className="md:hidden text-slate-400"><X size={24} /></button>
         </div>
@@ -2343,6 +2343,7 @@ const PrivacyPolicy = () => (
 );
 
 const App = () => {
+  console.log("DEBUG: Current URL is", window.location.href);
   const isPrivacy = window.location.href.toLowerCase().includes('privacy') || window.location.href.toLowerCase().includes('politica');
   
   if (isPrivacy) {
