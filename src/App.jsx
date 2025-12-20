@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import { supabase, storeClient } from './lib/supabase';
 import { generateViralStrategy, generateCaption, initAI, verifyConnection, debugModels, generateHashtags, analyzeBrandVoice, analyzeImageQuality } from './services/ai.js';
-import * as facebookService from './services/social/facebook';
+import { facebookService } from './services/social/facebook';
 import { instagramService } from './services/social/instagram';
 import PageSelector from './components/PageSelector';
 import PlatformSelector from './components/PlatformSelector';
