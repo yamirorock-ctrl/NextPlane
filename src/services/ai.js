@@ -461,3 +461,30 @@ export const analyzeImageQuality = async (imageUrl) => {
     };
   }
 };
+
+export const analyzeSentiment = async (text) => {
+  if (!genAI) throw new Error("AI not initialized");
+
+  const prompt = `Analiza el sentimiento de este comentario de redes sociales:
+  "${text}"
+  
+  Clasifícalo en UNO de estos 3 valores exactos:
+  - positive
+  - negative
+  - neutral
+  
+  Responde SOLO con la palabra clave (lowercase).`;
+
+  try {
+    const result = await tryGenerateContent(genAI, prompt);
+    const sentiment = result.response.text().trim().toLowerCase();
+
+    if (["positive", "negative", "neutral"].includes(sentiment)) {
+      return sentiment;
+    }
+    return "neutral";
+  } catch (error) {
+    console.warn("Sentiment Analysis Failed:", error);
+    return "neutral";
+  }
+};
