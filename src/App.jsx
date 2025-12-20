@@ -226,19 +226,7 @@ const Sidebar = ({ activeTab, setActiveTab, mobileMenuOpen, setMobileMenuOpen, o
             Instalar App
           </button>
 
-          <div className="bg-slate-900 rounded-xl p-4 border border-slate-800 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-2 opacity-10">
-                <TrendingUp size={60} />
-             </div>
-            <p className="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wider">Puntuación Viral</p>
-            <div className="flex items-end gap-2 mb-2">
-              <span className="text-3xl font-bold text-emerald-400">92</span>
-              <span className="text-xs text-slate-500 mb-1 font-bold">/ 100</span>
-            </div>
-            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-emerald-500 h-full w-[92%] shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-            </div>
-          </div>
+
         </div>
       </div>
     </>
