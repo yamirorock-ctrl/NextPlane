@@ -160,6 +160,23 @@ export const facebookService = {
     }
   },
 
+  // NEW: Fetch Page Details for Knowledge Base
+  getPageDetails: async (pageId, accessToken) => {
+    try {
+      const fields =
+        "name,about,bio,description,website,phone,emails,location,hours,general_info";
+      const response = await fetch(
+        `https://graph.facebook.com/v19.0/${pageId}?fields=${fields}&access_token=${accessToken}`
+      );
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
+      return data;
+    } catch (e) {
+      console.error("Error fetching page details:", e);
+      throw e;
+    }
+  },
+
   // NEW: Fetch Page Insights for Analytics
   getPageInsights: async (pageId, accessToken) => {
     if (!pageId || !accessToken) return null;

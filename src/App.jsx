@@ -2032,9 +2032,60 @@ const SettingsView = ({
      {/* AI Brain / Knowledge Base */}
      <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 shadow-xl backdrop-blur-sm relative overflow-hidden">
          <div className="absolute top-0 right-0 p-4 opacity-10"><span className="font-bold text-6xl">🧠</span></div> 
-         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-             <Sparkles size={16} className="text-amber-400" /> Cerebro IA (Knowledge Base)
-         </h3>
+         <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Sparkles size={16} className="text-amber-400" /> Cerebro IA (Knowledge Base)
+            </h3>
+            <div className="flex items-center gap-2">
+                 <button
+                    onClick={async () => {
+                        if(!metaPageId || (!metaPageAccessToken && !metaAccessToken)) {
+                            return alert("Primero conecta una Página de Facebook arriba.");
+                        }
+                        const btn = document.getElementById('import-fb-btn');
+                        if(btn) btn.innerText = "⏳ Leyendo...";
+                        
+                        try {
+                            const token = metaPageAccessToken || metaAccessToken;
+                            const details = await facebookService.getPageDetails(metaPageId, token);
+                            
+                            // Format Data
+                            let text = `Nombre: ${details.name}\n`;
+                            if(details.about) text += `Sobre nosotros: ${details.about}\n`;
+                            if(details.bio) text += `Bio: ${details.bio}\n`;
+                            if(details.description) text += `Descripción: ${details.description}\n`;
+                            if(details.location) text += `Ubicación: ${details.location.city}, ${details.location.country} (${details.location.street || ''})\n`;
+                            if(details.website) text += `Web: ${details.website}\n`;
+                            if(details.phone) text += `Tel: ${details.phone}\n`;
+                            if(details.emails) text += `Email: ${details.emails[0]}\n`;
+                            
+                            if(details.hours) {
+                                text += `Horarios: ${JSON.stringify(details.hours)}\n`; // Simplify later if needed
+                            }
+
+                            const newKb = (knowledgeBase ? knowledgeBase + "\n\n" : "") + "--- IMPORTADO DE FACEBOOK ---\n" + text;
+                            
+                            setKnowledgeBase(newKb);
+                            saveField('ai_knowledge_base', newKb);
+                            alert("✅ ¡Información importada con éxito!");
+
+                        } catch(e) {
+                            console.error(e);
+                            alert("Error importando: " + e.message);
+                        } finally {
+                             if(btn) btn.innerText = "✨ Importar de FB";
+                        }
+                    }}
+                    id="import-fb-btn"
+                    className="text-[10px] font-bold bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1"
+                 >
+                    <Facebook size={12} /> ✨ Importar Info
+                 </button>
+                 <span className="text-[10px] uppercase font-bold text-emerald-500 animate-pulse bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    Guardado
+                 </span>
+            </div>
+         </div>
          <p className="text-xs text-slate-400 mb-4">
             Escribe aquí TODA la información que la IA necesita saber para responder a tus clientes (precios, horarios, políticas, envíos).
          </p>
@@ -2045,21 +2096,28 @@ const SettingsView = ({
                 saveField('ai_knowledge_base', e.target.value);
             }}
             placeholder="Ej: Somos Next Plane. Enviamos gratis. Aceptamos Efectivo..."
-            className="w-full h-40 bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 focus:ring-2 focus:ring-amber-500/50 outline-none resize-none custom-scrollbar"
+            className="w-full h-40 bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 focus:ring-2 focus:ring-amber-500/50 outline-none resize-none custom-scrollbar transition-all"
          />
      </div>
       
      {/* Google Gemini */}
      <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 shadow-xl backdrop-blur-sm">
-        <label className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wide flex items-center gap-2">
-             <Sparkles size={16} className="text-amber-400" /> Google Gemini API Key
-        </label>
+        <div className="flex justify-between items-center mb-3">
+             <label className="text-sm font-bold text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                 <Sparkles size={16} className="text-amber-400" /> Google Gemini API Key
+             </label>
+             <span className="text-[10px] uppercase font-bold text-emerald-500 animate-pulse bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                Guardado
+             </span>
+        </div>
          <div className="flex gap-2">
             <input 
                  type="password" 
                  value={apiKey} 
-
-                 onChange={(e) => setApiKey(e.target.value)}
+                 onChange={(e) => {
+                     setApiKey(e.target.value);
+                     saveField('gemini_api_key', e.target.value);
+                 }}
                  placeholder="sk-..." 
                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-amber-400 transition-all font-mono text-sm"
              />
@@ -2087,13 +2145,18 @@ const SettingsView = ({
       {/* Meta (Facebook/Instagram) */}
       <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 shadow-xl backdrop-blur-sm relative overflow-hidden">
          <div className="absolute top-0 right-0 p-4 opacity-10"><span className="font-bold text-6xl">Fb</span></div>
-         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-             <div className="flex -space-x-2">
-                <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-[10px] border border-slate-900">f</div>
-                <div className="w-5 h-5 bg-pink-600 rounded-full flex items-center justify-center text-[10px] border border-slate-900">In</div>
-             </div>
-             Meta Graph API (Facebook & Instagram)
-         </h3>
+         <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <div className="flex -space-x-2">
+                    <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-[10px] border border-slate-900">f</div>
+                    <div className="w-5 h-5 bg-pink-600 rounded-full flex items-center justify-center text-[10px] border border-slate-900">In</div>
+                </div>
+                Meta Graph API (Facebook & Instagram)
+            </h3>
+            <span className="text-[10px] uppercase font-bold text-emerald-500 animate-pulse bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                Guardado
+            </span>
+         </div>
          
          <div className="space-y-4">
              <div>
@@ -2101,7 +2164,10 @@ const SettingsView = ({
                  <input 
                      type="text" 
                      value={metaAppId}
-                     onChange={(e) => setMetaAppId(e.target.value)}
+                     onChange={(e) => {
+                         setMetaAppId(e.target.value);
+                         saveField('meta_app_id', e.target.value);
+                     }}
                      placeholder="123456789..." 
                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm"
                  />
@@ -2111,7 +2177,10 @@ const SettingsView = ({
                  <input 
                      type="password" 
                      value={metaAppSecret}
-                     onChange={(e) => setMetaAppSecret(e.target.value)}
+                     onChange={(e) => {
+                         setMetaAppSecret(e.target.value);
+                         saveField('meta_app_secret', e.target.value);
+                     }}
                      placeholder="................" 
                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm"
                  />
