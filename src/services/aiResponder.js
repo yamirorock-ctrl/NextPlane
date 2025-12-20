@@ -4,16 +4,20 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 let isListening = false;
 let subscription = null;
+let currentSettings = null; // Store settings
 
 export const aiResponder = {
-  init: async (apiKey) => {
-    if (!apiKey) return;
+  init: async (settings) => {
+    if (!settings || !settings.gemini_api_key) return;
+    // Update settings even if already listening (e.g. prompt change)
+    currentSettings = settings;
+
     if (isListening) return;
 
     console.log("🤖 AI Responder: Initializing...");
     isListening = true;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = new GoogleGenerativeAI(settings.gemini_api_key);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
     // Subscribe to NEW messages
@@ -42,15 +46,18 @@ export const aiResponder = {
   stop: () => {
     if (subscription) supabase.removeChannel(subscription);
     isListening = false;
+    currentSettings = null;
     console.log("🤖 AI Responder: Stopped.");
   },
 };
 
 const processMessage = async (msg, model) => {
   try {
+    if (!currentSettings) throw new Error("Settings unavailable");
+
     // 1. Get Context (Knowledge Base)
     const knowledgeBase =
-      localStorage.getItem("ai_knowledge_base") ||
+      currentSettings.ai_knowledge_base ||
       "Eres un asistente amable. Horario: 9 a 18hs. Envíos gratis > $50. Si no sabes, di [HUMANO].";
 
     // 1.5 Get Products (RAG Lite)
@@ -95,7 +102,11 @@ const processMessage = async (msg, model) => {
     console.log("🤖 AI Response:", responseText);
 
     // 4. Handle "Handoff" or "Auto Mode Check"
-    const isAutoMode = localStorage.getItem("ai_auto_mode") === "true";
+    // const isAutoMode = localStorage.getItem("ai_auto_mode") === "true";
+    // TODO: Add ai_auto_mode to settings Schema if not present. Assuming default false for safety if missing.
+    const isAutoMode =
+      currentSettings.ai_auto_mode === true ||
+      currentSettings.ai_auto_mode === "true";
 
     if (responseText.includes("[HUMANO]")) {
       console.log("🤖 AI Handoff requested.");
@@ -113,20 +124,21 @@ const processMessage = async (msg, model) => {
 
     // 5. Send Reply via Meta API
     // Load Settings
-    const settings = {
+    const replySettings = {
       metaPageAccessToken:
-        localStorage.getItem("meta_page_access_token") ||
-        localStorage.getItem("meta_access_token"), // Fallback
-      metaPageId: localStorage.getItem("meta_page_id"),
-      whatsappToken: localStorage.getItem("meta_access_token"), // Usually same for System User or separate
-      whatsappPhoneId: localStorage.getItem("meta_whatsapp_id"),
+        currentSettings.meta_page_access_token ||
+        currentSettings.meta_access_token,
+      metaPageId: currentSettings.meta_page_id,
+      whatsappToken: currentSettings.meta_access_token, // Usually same for System User or separate
+      whatsappPhoneId: currentSettings.meta_whatsapp_id,
+      metaInstagramId: currentSettings.meta_instagram_id,
     };
 
     await facebookService.sendReply(
       msg.platform,
       msg.sender_id,
       responseText,
-      settings
+      replySettings
     );
 
     // 6. Insert Reply into DB (so it shows in UI)

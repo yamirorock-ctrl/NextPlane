@@ -4,10 +4,13 @@ export const facebookService = {
     // Load SDK or setup headers
   },
 
-  login: async () => {
+  login: async (appId) => {
     // Basic OAuth Login Flow
-    const appId = localStorage.getItem("meta_app_id");
-    if (!appId) throw new Error("Meta App ID not configured");
+    // const appId = localStorage.getItem("meta_app_id"); // REMOVED dependency
+    if (!appId) {
+      alert("⚠️ Falta el 'App ID' en Configuración.");
+      return;
+    }
 
     const redirectUri = window.location.origin + "/"; // Redirect back to app root
 
@@ -357,12 +360,12 @@ export const facebookService = {
     return { success: true, id: data.id };
   },
 
-  exchangeForLongLivedToken: async (shortLivedToken) => {
-    const appId = localStorage.getItem("meta_app_id");
-    const appSecret = localStorage.getItem("meta_app_secret");
+  exchangeForLongLivedToken: async (shortLivedToken, appId, appSecret) => {
+    // const appId = localStorage.getItem("meta_app_id");
+    // const appSecret = localStorage.getItem("meta_app_secret");
 
     if (!appId || !appSecret) {
-      throw new Error("Falta App ID o App Secret en Configuración.");
+      throw new Error("Falta App ID o App Secret (Pásalos como argumentos).");
     }
 
     console.log("Exchanging for Long-Lived Token...");

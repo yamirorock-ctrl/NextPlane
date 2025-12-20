@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { AuthProvider, useAuth } from './components/auth/AuthProvider';
+import AuthPage from './pages/Auth';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import { supabase, storeClient } from './lib/supabase';
@@ -637,6 +639,7 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
 };
 
 import { uploadMedia } from './services/storage';
+import { renderVideo } from './services/videoRenderer';
 import imageCompression from 'browser-image-compression';
 
 const CreateStudio = ({ 
@@ -662,6 +665,7 @@ const CreateStudio = ({
   // Settings States
 
   const [uploading, setUploading] = useState(false);
+  const [rendering, setRendering] = useState(false); // New Rendering State
   const [editingImage, setEditingImage] = useState(null); // URL of image to edit
   const [showEditor, setShowEditor] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false); // Collapsed by default as requested
@@ -1740,6 +1744,50 @@ const CreateStudio = ({
              </button>
           </div>
         </div>
+        
+        {/* Video Render Actions */}
+        {contentType === 'video' && (
+           <div className="flex justify-end gap-2 mt-2">
+              <button 
+                onClick={async () => {
+                   if (!selectedProduct) return;
+                   setRendering(true);
+                   try {
+                       const images = selectedProduct.gallery && selectedProduct.gallery.length > 0 
+                           ? selectedProduct.gallery 
+                           : [selectedProduct.image_url];
+                           
+                       const blob = await renderVideo({
+                           images,
+                           // Audio disabled to avoid CORS for now unless valid URL
+                           audioUrl: null, 
+                           textOverlay: selectedHook, 
+                           onProgress: (p) => console.log("Rendering:", p)
+                       });
+                       
+                       const url = URL.createObjectURL(blob);
+                       const a = document.createElement('a');
+                       a.href = url;
+                       a.download = `video-${selectedProduct.name.replace(/\s+/g, '-')}.webm`;
+                       a.click();
+                       URL.revokeObjectURL(url);
+                       alert("🎥 Video descargado! Listo para subir a TikTok/Reels.");
+                   } catch (e) {
+                       console.error(e);
+                       alert("Error: " + e.message);
+                   } finally {
+                       setRendering(false);
+                   }
+                }}
+                disabled={rendering}
+                className="text-xs text-slate-400 hover:text-white flex items-center gap-1 disabled:opacity-50 transition-colors"
+                title="Renderizar y descargar video MP4"
+              >
+                  {rendering ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                  {rendering ? "Creando Video..." : "Descargar Video"}
+              </button>
+           </div>
+        )}
       </div>
 
       {/* Preview Section */}
@@ -1961,7 +2009,8 @@ const SettingsView = ({
   tiktokSecret, setTiktokSecret,
   setMetaPageName, // New prop
   metaPageAccessToken, setMetaPageAccessToken, // New prop for Page Token
-  knowledgeBase, setKnowledgeBase // New prop for AI
+  knowledgeBase, setKnowledgeBase, // New prop for AI
+  saveField // New prop for DB saving
 }) => {
   // Local state for found pages list
   const [foundPages, setFoundPages] = useState([]);
@@ -1991,7 +2040,10 @@ const SettingsView = ({
          </p>
          <textarea 
             value={knowledgeBase}
-            onChange={(e) => setKnowledgeBase(e.target.value)}
+            onChange={(e) => {
+                setKnowledgeBase(e.target.value);
+                saveField('ai_knowledge_base', e.target.value);
+            }}
             placeholder="Ej: Somos Next Plane. Enviamos gratis. Aceptamos Efectivo..."
             className="w-full h-40 bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 focus:ring-2 focus:ring-amber-500/50 outline-none resize-none custom-scrollbar"
          />
@@ -2080,7 +2132,7 @@ const SettingsView = ({
                                     // AUTOMATIC EXCHANGE
                                     alert("⏳ Canjeando por token de larga duración... Espere un momento.");
                                     try {
-                                      const longToken = await facebookService.exchangeForLongLivedToken(val);
+                                      const longToken = await facebookService.exchangeForLongLivedToken(val, metaAppId, metaAppSecret);
                                       alert("✅ ¡Token 'Eterno' Generado y Guardado! (60 días)");
                                       val = longToken;
                                     } catch(e) {
@@ -2090,6 +2142,7 @@ const SettingsView = ({
                                 }
                             }
                             setMetaAccessToken(val);
+                            saveField('meta_access_token', val);
                         }}
                         placeholder="Pega el Token (o la URL completa del login)" 
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 transition-all font-mono text-xs truncate"
@@ -2148,22 +2201,27 @@ const SettingsView = ({
                             <button 
                               onClick={async () => {
                                 setMetaPageId(page.id);
-                                localStorage.setItem("meta_page_id", page.id);
-                                localStorage.setItem("meta_page_name", page.name);
+                                // localStorage.setItem("meta_page_id", page.id);
+                                saveField && saveField('meta_page_id', page.id);
+
+                                // localStorage.setItem("meta_page_name", page.name);
+                                saveField && saveField('meta_page_name', page.name);
                                 setMetaPageName && setMetaPageName(page.name);
                                 
                                 // Save Page Access Token separately
                                 if(setMetaPageAccessToken && page.access_token) {
                                     setMetaPageAccessToken(page.access_token);
-                                    localStorage.setItem("meta_page_access_token", page.access_token);
+                                    saveField && saveField('meta_page_access_token', page.access_token);
                                 }
 
                                 // Save Instagram ID if available
                                 if(page.instagram_business_account && page.instagram_business_account.id) {
-                                    localStorage.setItem("meta_instagram_id", page.instagram_business_account.id);
+                                    // localStorage.setItem("meta_instagram_id", page.instagram_business_account.id);
+                                    saveField && saveField('meta_instagram_id', page.instagram_business_account.id);
                                     alert(`¡Conectado a ${page.name}! 🚀\n\nTambién se vinculó Instagram (${page.instagram_business_account.id}).`);
                                 } else {
-                                    localStorage.removeItem("meta_instagram_id");
+                                    // localStorage.removeItem("meta_instagram_id");
+                                    saveField && saveField('meta_instagram_id', null);
                                     // alert(`¡Conectado a ${page.name}! 🚀\n\n(No se detectó cuenta de Instagram vinculada a esta página).`);
                                 }
                                 
@@ -2192,7 +2250,10 @@ const SettingsView = ({
                     <input 
                         type="text" 
                         value={metaPageId}
-                        onChange={(e) => setMetaPageId(e.target.value)}
+                        onChange={(e) => {
+                            setMetaPageId(e.target.value);
+                            saveField && saveField('meta_page_id', e.target.value);
+                        }}
                         placeholder="Ej: 100523..." 
                         className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm"
                     />
@@ -2226,9 +2287,10 @@ const SettingsView = ({
              <button 
                onClick={async () => {
                  try {
-                   localStorage.removeItem('meta_page_access_token');
+                   // localStorage.removeItem('meta_page_access_token');
+                   saveField && saveField('meta_page_access_token', null);
                    setMetaPageAccessToken('');
-                   await facebookService.login();
+                   await facebookService.login(metaAppId);
                  } catch(e) { alert("Error: " + e.message); }
                }}
                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
@@ -2250,7 +2312,10 @@ const SettingsView = ({
                 <input 
                     type="text" 
                     value={tiktokKey}
-                    onChange={(e) => setTiktokKey(e.target.value)}
+                    onChange={(e) => {
+                        setTiktokKey(e.target.value);
+                        saveField && saveField('tiktok_client_key', e.target.value);
+                    }}
                     placeholder="Ej: aw345..." 
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-pink-500 transition-all font-mono text-sm"
                 />
@@ -2260,7 +2325,10 @@ const SettingsView = ({
                 <input 
                     type="password" 
                     value={tiktokSecret}
-                    onChange={(e) => setTiktokSecret(e.target.value)}
+                    onChange={(e) => {
+                        setTiktokSecret(e.target.value);
+                        saveField && saveField('tiktok_client_secret', e.target.value);
+                    }}
                     placeholder="Ej: ..." 
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-pink-500 transition-all font-mono text-sm"
                 />
@@ -2336,9 +2404,29 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <AppContent />
+        <AuthProvider>
+            <AppDispatcher />
+        </AuthProvider>
     </ErrorBoundary>
   );
+};
+
+const AppDispatcher = () => {
+    const { user, loading } = useAuth();
+    
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            </div>
+        );
+    }
+
+    if (!user) {
+        return <AuthPage />;
+    }
+
+    return <AppContent />;
 };
 
 
@@ -2353,6 +2441,8 @@ const AppContent = () => {
   const [scheduledPosts, setScheduledPosts] = useState([]);
   const [isScheduling, setIsScheduling] = useState(false);
   
+  const { settings, updateSettings, signOut } = useAuth(); // Import from AuthContext
+
   // GLOBAL STATE (Lifted from CreateStudio)
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -2382,65 +2472,63 @@ const AppContent = () => {
     }
   };
   
-  // Persist API Key & Settings
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
-  const [metaAppId, setMetaAppId] = useState(localStorage.getItem('meta_app_id') || '');
+  // Persist API Key & Settings -- NOW USING SUPABASE SETTINGS!
+  // We sync local state with 'settings' object from DB
+  const [apiKey, setApiKey] = useState('');
+  const [metaAppId, setMetaAppId] = useState('');
+  const [metaAppSecret, setMetaAppSecret] = useState('');
+  const [metaAccessToken, setMetaAccessToken] = useState('');
+  const [metaPageId, setMetaPageId] = useState('');
+  const [metaPageName, setMetaPageName] = useState('');
+  const [metaPageAccessToken, setMetaPageAccessToken] = useState('');
+  const [metaInstagramId, setMetaInstagramId] = useState('');
+  const [tiktokKey, setTiktokKey] = useState('');
+  const [tiktokSecret, setTiktokSecret] = useState('');
+  const [knowledgeBase, setKnowledgeBase] = useState('');
+
+  // 1. Load Settings from DB when ready
+  useEffect(() => {
+     if(settings) {
+         if(settings.gemini_api_key) setApiKey(settings.gemini_api_key);
+         if(settings.meta_app_id) setMetaAppId(settings.meta_app_id);
+         if(settings.meta_app_secret) setMetaAppSecret(settings.meta_app_secret);
+         if(settings.meta_access_token) setMetaAccessToken(settings.meta_access_token);
+         if(settings.meta_page_id) setMetaPageId(settings.meta_page_id);
+         if(settings.meta_page_name) setMetaPageName(settings.meta_page_name);
+         if(settings.meta_page_access_token) setMetaPageAccessToken(settings.meta_page_access_token);
+         if(settings.meta_instagram_id) setMetaInstagramId(settings.meta_instagram_id);
+         if(settings.tiktok_client_key) setTiktokKey(settings.tiktok_client_key);
+         if(settings.tiktok_client_secret) setTiktokSecret(settings.tiktok_client_secret);
+         if(settings.ai_knowledge_base) setKnowledgeBase(settings.ai_knowledge_base);
+     }
+  }, [settings]);
+
+  // 2. Auto-Save Debounced (Naive implementation: save on effect)
+  // To avoid too many DB writes, we should ideally use a 'Save' button or debounce.
+  // For now, let's keep the existing UI flow but allow updating DB.
   
+  // Helper to save specific field
+  const saveField = (field, value) => {
+      updateSettings({ [field]: value }).catch(console.error);
+  };
+
   // Detect OAuth Redirect (The "Second App" Scenario)
   useEffect(() => {
      if(window.location.hash && window.location.hash.includes("access_token=")) {
         setIsAuthRedirect(true);
-        // We don't extract it here anymore, we let the user copy the URL 
-        // OR if this was a direct redirect in the same window (Web Mode), we could handle it.
-        // But the current flow relies on the user copying the URL in Electron.
-        
-        // Wait! In Electron "Web Mode" or if the user is just pasting the URL:
-        // The user manually pastes the URL into the input below.
-        // So we need to update the binding where the user INPUTS the token.
      }
   }, []);
 
-
-  const [metaAppSecret, setMetaAppSecret] = useState(localStorage.getItem('meta_app_secret') || '');
-  
-  const [metaAccessToken, setMetaAccessToken] = useState(localStorage.getItem('meta_access_token') || '');
-  const [metaPageId, setMetaPageId] = useState(localStorage.getItem('meta_page_id') || '');
-  const [metaPageName, setMetaPageName] = useState(() => localStorage.getItem('meta_page_name') || ''); // New State
-  const [metaPageAccessToken, setMetaPageAccessToken] = useState(() => localStorage.getItem('meta_page_access_token') || ''); // PAGE Token
-  const [metaInstagramId, setMetaInstagramId] = useState(() => localStorage.getItem('meta_instagram_id') || ''); // IG ID check
-  const [metaWhatsAppId, setMetaWhatsAppId] = useState(() => localStorage.getItem('meta_whatsapp_id') || ''); // WhatsApp Phone ID
-
-  const [tiktokKey, setTiktokKey] = useState(localStorage.getItem('tiktok_client_key') || '');
-  const [tiktokSecret, setTiktokSecret] = useState(localStorage.getItem('tiktok_client_secret') || '');
-
-  // Knowledge Base State
-  const [knowledgeBase, setKnowledgeBase] = useState(() => localStorage.getItem('ai_knowledge_base') || '');
-  useEffect(() => { localStorage.setItem('ai_knowledge_base', knowledgeBase); }, [knowledgeBase]);
-
-  // Init AI Responder
+  // Init AI Responder & Helper
   useEffect(() => {
-      if(apiKey) {
-          aiResponder.init(apiKey);
+      if(settings && settings.gemini_api_key) {
+          aiResponder.init(settings);
+          initAI(settings.gemini_api_key);
       }
       return () => aiResponder.stop();
-  }, [apiKey]);
+  }, [settings]);
 
-
-  useEffect(() => {
-    localStorage.setItem('gemini_api_key', apiKey);
-    if (apiKey) initAI(apiKey);
-  }, [apiKey]);
-
-  // Effects for auto-saving keys
-  useEffect(() => { localStorage.setItem('meta_app_id', metaAppId); }, [metaAppId]);
-  useEffect(() => { localStorage.setItem('meta_app_secret', metaAppSecret); }, [metaAppSecret]);
-  useEffect(() => { localStorage.setItem('meta_access_token', metaAccessToken); }, [metaAccessToken]);
-  useEffect(() => { localStorage.setItem('meta_page_id', metaPageId); }, [metaPageId]);
-  useEffect(() => { localStorage.setItem('meta_page_name', metaPageName); }, [metaPageName]); // Persist Name
-  useEffect(() => { localStorage.setItem('meta_page_access_token', metaPageAccessToken); }, [metaPageAccessToken]);
-
-  useEffect(() => { localStorage.setItem('tiktok_client_key', tiktokKey); }, [tiktokKey]);
-  useEffect(() => { localStorage.setItem('tiktok_client_secret', tiktokSecret); }, [tiktokSecret]);
+  // Effects for auto-saving keys REMOVED (Replaced by saveField)
 
   // Load posts from Supabase on mount
 
@@ -2764,6 +2852,7 @@ const AppContent = () => {
               setMetaPageName={setMetaPageName} // Passed here!
               metaPageAccessToken={metaPageAccessToken} setMetaPageAccessToken={setMetaPageAccessToken}
               knowledgeBase={knowledgeBase} setKnowledgeBase={setKnowledgeBase}
+              saveField={saveField}
             />}
             {activeTab === 'products' && <ProductManager onRelaunch={handleProductRelaunch} />}
             {activeTab === 'trends' && (

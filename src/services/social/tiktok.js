@@ -7,8 +7,8 @@ const MOCK_TRENDING_AUDIO = [
 ];
 
 export const tiktokService = {
-  login: async () => {
-    const clientKey = localStorage.getItem("tiktok_client_key");
+  login: async (clientKey) => {
+    // const clientKey = localStorage.getItem("tiktok_client_key");
     if (!clientKey) throw new Error("TikTok Client Key not configured");
 
     // https://developers.tiktok.com/doc/login-kit-web
