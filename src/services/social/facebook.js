@@ -17,11 +17,9 @@ export const facebookService = {
       (window && window.process && window.process.type) ||
       navigator.userAgent.toLowerCase().indexOf(" electron/") > -1;
 
-    // Use a standard valid URI for Electron manual copy-paste flow,
-    // otherwise use current origin (localhost) for web dev
-    const redirectUri = isElectron
-      ? "https://www.facebook.com/connect/login_success.html"
-      : window.location.origin + "/";
+    // LIVE MODE FIX: Use the production Vercel URL.
+    // This domain should already be whitelisted in Facebook App Settings.
+    const redirectUri = "https://viral-boost-lilac.vercel.app/";
 
     // Scopes needed:
     // - pages_show_list, pages_read_engagement, pages_manage_posts: Basic management
@@ -35,7 +33,7 @@ export const facebookService = {
 
     if (isElectron) {
       alert(
-        "⚠️ En modo App de Escritorio:\n\n1. Se abrirá Facebook en tu navegador.\n2. Inicia sesión.\n3. Asegúrate de dar permisos a TODAS las páginas y funciones.\n4. Cuando veas 'Success', COPIA LA URL completa de arriba y pégala aquí en la app."
+        "⚠️ MODO LIVE ACTIVO:\n\n1. Se abrirá Facebook > Inicia sesión.\n2. Al terminar, serás redirigido a tu Web (viral-boost-lilac.vercel.app).\n3. COPIA LA URL COMPLETA de esa página (empezará por https://viral-boost-lilac...#access_token=...)\n4. Pégala aquí."
       );
       window.open(authUrl, "_blank");
     } else {
@@ -197,6 +195,8 @@ export const facebookService = {
         fetch(pageDataUrl),
       ]);
 
+      let error = null;
+
       // 1. Process Chart Data
       let chartData = [];
       if (insightsRes.status === "fulfilled" && insightsRes.value.ok) {
@@ -219,14 +219,12 @@ export const facebookService = {
           .slice(-7);
       } else {
         if (insightsRes.status === "fulfilled") {
-          try {
-            const errBody = await insightsRes.value.json();
-            console.error("❌ FB Insights Error JSON:", errBody);
-          } catch (e) {
-            console.warn("❌ FB Insights Error (No JSON):", insightsRes.value);
-          }
+          const errBody = await insightsRes.value.json().catch(() => ({}));
+          console.error("❌ FB Insights Error JSON:", errBody);
+          error = errBody?.error?.message || insightsRes.value.statusText;
         } else {
           console.error("❌ FB Insights Network Error:", insightsRes.reason);
+          error = insightsRes.reason?.message;
         }
       }
 
@@ -235,23 +233,16 @@ export const facebookService = {
       if (pageRes.status === "fulfilled" && pageRes.value.ok) {
         const pData = await pageRes.value.json();
         totalFans = pData.followers_count || pData.fan_count || 0;
-      } else {
-        if (pageRes.status === "fulfilled") {
-          try {
-            const errBody = await pageRes.value.json();
-            console.error("❌ FB Page Data Error JSON:", errBody);
-          } catch (e) {
-            console.warn("❌ FB Page Data Error (No JSON):", pageRes.value);
-          }
-        } else {
-          console.error("❌ FB Page Network Error:", pageRes.reason);
-        }
+      }
+
+      if (error) {
+        throw new Error(error);
       }
 
       return { chartData, totalFans };
     } catch (e) {
       console.error("Error fetching insights:", e);
-      return { chartData: [], totalFans: 0 };
+      throw e; // Rethrow so component sees it
     }
   },
 

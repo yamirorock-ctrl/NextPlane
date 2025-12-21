@@ -2909,7 +2909,7 @@ const AppContent = () => {
             />}
             {activeTab === 'listening' && <SocialListening pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} />}
             {activeTab === 'training' && <BrandVoiceTrainer />}
-            {activeTab === 'analytics' && <AnalyticsDashboard pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} />}
+            {activeTab === 'analytics' && <AnalyticsDashboard pageId={settings?.meta_page_id} accessToken={settings?.meta_page_access_token || settings?.meta_access_token} pageName={settings?.meta_page_name} />}
             {activeTab === 'settings' && <SettingsView 
               apiKey={apiKey} setApiKey={setApiKey}
               metaAppId={metaAppId} setMetaAppId={setMetaAppId}

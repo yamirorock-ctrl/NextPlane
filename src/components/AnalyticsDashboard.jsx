@@ -97,10 +97,10 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName }) => {
                 // Handle Token Expiry (#190) specifically
                 if (err.message.includes("190") || err.message.includes("Session is invalid")) {
                     alert("⚠️ Tu sesión de Facebook caducó. Por favor reconecta en Configuración.");
-                    setIsRealData(false); // Revert to Simulation
-                } else {
-                    // Don't revert to demo on generic error, stay in real mode but maybe show empty
-                    setIsRealData(true); 
+                    // User requested to stay in Real Data mode to debug
+                    console.error("Analytics API failed:", err);
+                    setMetrics(prev => ({ ...prev, error: err.message })); // Store error
+                    setIsRealData(true);
                 }
             })
             .finally(() => setLoading(false));
@@ -118,6 +118,22 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName }) => {
              <span className="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-3 py-1 rounded-full border border-amber-500/20">
                 MODO SIMULACIÓN — Conecta tu cuenta en Configuración para ver datos reales.
              </span>
+          </div>
+      )}
+
+      {metrics.error && (
+          <div className="absolute -top-4 left-0 w-full text-center py-1 z-50 flex items-center justify-center gap-4">
+             <span className="bg-red-500/10 text-red-300 text-[10px] font-bold px-3 py-1 rounded-full border border-red-500/20 flex items-center gap-2">
+                ERROR API: {metrics.error}
+             </span>
+             {metrics.error.includes("Session has expired") && (
+                 <button 
+                    onClick={() => facebookService.login(import.meta.env.VITE_FACEBOOK_APP_ID)}
+                    className="bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full transition-colors"
+                 >
+                    Reconectar Ahora
+                 </button>
+             )}
           </div>
       )}
 
