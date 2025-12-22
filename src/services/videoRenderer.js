@@ -3,8 +3,9 @@
  */
 
 export const renderVideo = async ({
-  images, // Array of image URLs
+  images, // Array of image/video URLs
   audioUrl, // URL of audio file (optional)
+  audioStartTime = 0, // Start time in seconds
   duration, // Duration per slide in seconds (default 3s)
   textOverlay, // Text to display (e.g., Hook)
   onProgress, // Callback (progress 0-1)
@@ -12,17 +13,27 @@ export const renderVideo = async ({
   const width = 1080; // Instagram/TikTok Resolution
   const height = 1920;
   const fps = 30;
-  const slideDuration = duration || 3;
-  const totalDuration = images.length * slideDuration;
 
-  // 1. Setup Canvas
+  // 1. Load Assets (Images OR Videos)
+  const loadedMedia = await Promise.all(images.map(loadMedia));
+
+  // Calculate total duration
+  let totalDuration;
+  if (images.length === 1 && loadedMedia[0].type === "video") {
+    // If it's a single video, use its natural duration
+    totalDuration = loadedMedia[0].element.duration;
+    if (!totalDuration || isNaN(totalDuration)) totalDuration = 10; // Fallback
+  } else {
+    // Slideshow mode
+    const slideDuration = duration || 3;
+    totalDuration = images.length * slideDuration;
+  }
+
+  // 2. Setup Canvas
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
-
-  // 2. Load Assets
-  const loadedImages = await Promise.all(images.map(loadBitmap));
 
   // 3. Audio Setup (Web Audio API for mixing)
   let audioCtx, source, dest, audioBuffer;
@@ -57,6 +68,7 @@ export const renderVideo = async ({
   const combinedStream = new MediaStream(combinedTracks);
   const recorder = new MediaRecorder(combinedStream, {
     mimeType: "video/webm;codecs=vp9", // Chrome/Electron standard
+    videoBitsPerSecond: 5000000, // High Quality
   });
 
   const chunks = [];
@@ -70,15 +82,35 @@ export const renderVideo = async ({
       resolve(blob);
       // Cleanup
       if (audioCtx) audioCtx.close();
+      loadedMedia.forEach((m) => {
+        if (m.type === "video") {
+          m.element.pause();
+          m.element.src = "";
+        }
+      });
     };
 
     recorder.start();
-    if (source) source.start();
+    if (source) {
+      // Start audio with offset
+      // source.start(when, offset, duration)
+      source.start(0, audioStartTime);
+    }
+
+    // Start videos (muted)
+    loadedMedia.forEach((m) => {
+      if (m.type === "video") {
+        m.element.currentTime = 0;
+        m.element.muted = true;
+        m.element.play();
+      }
+    });
 
     // 5. Animation Loop
     let startTime = performance.now();
-    let frameCount = 0;
-    const totalFrames = totalDuration * fps;
+
+    // Slideshow Config
+    const slideDuration = duration || 3;
 
     const renderFrame = () => {
       // Calculate progress
@@ -89,23 +121,21 @@ export const renderVideo = async ({
         return;
       }
 
-      // Determine current slide
-      const slideIndex =
-        Math.floor(elapsed / slideDuration) % loadedImages.length;
-      const img = loadedImages[slideIndex];
-      const nextImg = loadedImages[(slideIndex + 1) % loadedImages.length];
-
-      // Transition logic (simple crossfade for last 0.5s of slide)
-      const timeInSlide = elapsed % slideDuration;
-      const transitionStart = slideDuration - 0.5;
-      let opacity = 1;
-
       // Draw Background (Black)
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, width, height);
 
-      // Draw Main Image (Cover)
-      drawImageProp(ctx, img, 0, 0, width, height);
+      // Determine content to draw
+      if (loadedMedia.length === 1 && loadedMedia[0].type === "video") {
+        // Video Mode
+        drawImageProp(ctx, loadedMedia[0].element, 0, 0, width, height);
+      } else {
+        // Slideshow Mode
+        const slideIndex =
+          Math.floor(elapsed / slideDuration) % loadedMedia.length;
+        const currentMedia = loadedMedia[slideIndex];
+        drawImageProp(ctx, currentMedia.element, 0, 0, width, height);
+      }
 
       // Overlay Text
       if (textOverlay) {
@@ -149,7 +179,7 @@ export const renderVideo = async ({
 };
 
 /**
- * Helper to scale image to cover
+ * Helper to scale image/video to cover
  */
 function drawImageProp(ctx, img, x, y, w, h, offsetX, offsetY) {
   if (arguments.length === 2) {
@@ -166,8 +196,9 @@ function drawImageProp(ctx, img, x, y, w, h, offsetX, offsetY) {
   if (offsetX > 1) offsetX = 1;
   if (offsetY > 1) offsetY = 1;
 
-  var iw = img.width,
-    ih = img.height,
+  // Supports both Image and Video element properties
+  var iw = img.videoWidth || img.width,
+    ih = img.videoHeight || img.height,
     r = Math.min(w / iw, h / ih),
     nw = iw * r, // new prop. width
     nh = ih * r, // new prop. height
@@ -200,12 +231,30 @@ function drawImageProp(ctx, img, x, y, w, h, offsetX, offsetY) {
   ctx.drawImage(img, cx, cy, cw, ch, x, y, w, h);
 }
 
-async function loadBitmap(url) {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = url;
-  return new Promise((resolve, reject) => {
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-  });
+// Unified Media Loader (Image or Video)
+async function loadMedia(url) {
+  const isVideo = url.match(/\.(mp4|webm|mov)$/i) || url.startsWith("blob:");
+
+  if (isVideo) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.src = url;
+      video.crossOrigin = "anonymous";
+      video.muted = true; // Required to autoplay without user interaction
+      video.loop = true;
+      // Wait for metadata to get duration/dimensions
+      video.onloadedmetadata = () => {
+        resolve({ type: "video", element: video });
+      };
+      video.onerror = reject;
+    });
+  } else {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = url;
+      img.onload = () => resolve({ type: "image", element: img });
+      img.onerror = reject;
+    });
+  }
 }

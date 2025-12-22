@@ -674,6 +674,13 @@ const CreateStudio = ({
 
   const [uploading, setUploading] = useState(false);
   const [rendering, setRendering] = useState(false); // New Rendering State
+  
+  // Audio State
+  const [customAudioUrl, setCustomAudioUrl] = useState(null);
+  const [audioType, setAudioType] = useState('file'); // 'file' | 'url'
+  const [audioStartTime, setAudioStartTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+
   const [editingImage, setEditingImage] = useState(null); // URL of image to edit
   const [showEditor, setShowEditor] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false); // Collapsed by default as requested
@@ -1680,6 +1687,117 @@ const CreateStudio = ({
           </div>
           
 
+
+          {/* Audio Selection Panel (New) */}
+          {contentType === 'video' && (
+             <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800/60 shadow-lg backdrop-blur-sm space-y-4 mb-6">
+                <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Music size={14} className="text-pink-500" /> Soundtrack
+                    </label>
+                    <div className="flex bg-slate-950 rounded-lg p-0.5 border border-slate-800">
+                        <button 
+                            onClick={() => setAudioType('file')}
+                            className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${audioType === 'file' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Archivo
+                        </button>
+                        <button 
+                            onClick={() => setAudioType('url')}
+                            className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${audioType === 'url' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            URL
+                        </button>
+                    </div>
+                </div>
+
+                {audioType === 'file' ? (
+                    <div className="flex items-center gap-3">
+                        <label className="flex-1 cursor-pointer bg-slate-950 hover:bg-slate-900 border border-slate-700 hover:border-indigo-500 rounded-xl p-3 transition-all flex items-center gap-3 group">
+                            <div className="bg-slate-800 p-2 rounded-lg group-hover:bg-indigo-500/20 group-hover:text-indigo-400 transition-colors">
+                                <Upload size={16} className="text-slate-400"/>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-300 group-hover:text-white truncate">
+                                    {customAudioUrl && customAudioUrl.startsWith('blob:') ? "Audio Cargado" : "Subir MP3/WAV"}
+                                </p>
+                            </div>
+                            <input 
+                                type="file" 
+                                accept="audio/*" 
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files[0];
+                                    if(file) {
+                                        const url = URL.createObjectURL(file);
+                                        setCustomAudioUrl(url);
+                                        // Reset trim
+                                        setAudioStartTime(0);
+                                    }
+                                }}
+                            />
+                        </label>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        <div className="relative">
+                            <Link size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/>
+                            <input 
+                                type="text" 
+                                placeholder="https://ejemplo.com/musica.mp3"
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 pl-8 text-xs text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                onBlur={(e) => {
+                                    if(e.target.value) setCustomAudioUrl(e.target.value);
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Audio Trimmer & Preview */}
+                {customAudioUrl && (
+                    <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 animate-in fade-in">
+                        <div className="flex justify-between items-center mb-2">
+                             <p className="text-[10px] font-bold text-slate-400">Recortar / Previsualizar</p>
+                             <p className="text-[10px] font-mono text-indigo-400">Inicio: {audioStartTime}s</p>
+                        </div>
+                        
+                        {/* Hidden Audio Element for Logic */}
+                        <audio 
+                            src={customAudioUrl} 
+                            id="preview-audio"
+                            onLoadedMetadata={(e) => setAudioDuration(e.target.duration)}
+                            controls
+                            className="w-full h-8 opacity-80"
+                        />
+                        
+                        <div className="mt-3 flex items-center gap-3">
+                            <span className="text-[10px] text-slate-500 font-mono">0s</span>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max={audioDuration || 60} 
+                                step="1"
+                                value={audioStartTime}
+                                onChange={(e) => {
+                                    const time = Number(e.target.value);
+                                    setAudioStartTime(time);
+                                    const audioEl = document.getElementById('preview-audio');
+                                    if(audioEl) {
+                                        audioEl.currentTime = time;
+                                        audioEl.play(); 
+                                    }
+                                }}
+                                className="flex-1 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer hover:bg-slate-700 accent-indigo-500"
+                            />
+                            <span className="text-[10px] text-slate-500 font-mono">{Math.floor(audioDuration)}s</span>
+                        </div>
+                         <p className="text-[9px] text-slate-500 mt-1 text-center italic">Ajusta el slider para elegir dónde empieza la canción en el video.</p>
+                    </div>
+                )}
+             </div>
+          )}
+
           {contentType === 'video' ? (
             <VideoScriptPanel 
                strategy={videoScript} 
@@ -1780,8 +1898,9 @@ const CreateStudio = ({
                            
                        const blob = await renderVideo({
                            images,
-                           // Audio disabled to avoid CORS for now unless valid URL
-                           audioUrl: null, 
+                           // Audio Integration
+                           audioUrl: customAudioUrl,
+                           audioStartTime: audioStartTime, 
                            textOverlay: selectedHook, 
                            onProgress: (p) => console.log("Rendering:", p)
                        });
