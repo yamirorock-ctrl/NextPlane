@@ -235,7 +235,7 @@ const Sidebar = ({ activeTab, setActiveTab, mobileMenuOpen, setMobileMenuOpen, o
   );
 };
 
-const ViralCoach = ({ hooks, onSelectHook, onSelectAudio, contentType, onRegenerateHooks, loadingHooks, trendingAudio, selectedTone, onSelectTone, strategy, product }) => {
+const ViralCoach = ({ hooks, onSelectHook, selectedHook, onSelectAudio, contentType, onRegenerateHooks, loadingHooks, trendingAudio, selectedTone, onSelectTone, strategy, product }) => {
   const tones = ["Sarcástico", "Profesional", "Urgente", "Amigable", "Polémico"];
 
   return (
@@ -320,11 +320,19 @@ const ViralCoach = ({ hooks, onSelectHook, onSelectAudio, contentType, onRegener
             <button 
               key={idx}
               onClick={() => onSelectHook(hook)}
-              className="w-full text-left p-3 text-sm bg-slate-800/50 hover:bg-indigo-600/10 hover:text-indigo-300 text-slate-300 rounded-lg transition-all border border-slate-700/50 hover:border-indigo-500/30 group relative overflow-hidden"
+              className={`w-full text-left p-3 text-sm rounded-lg transition-all border group relative overflow-hidden ${selectedHook === hook ? 'bg-indigo-500/20 text-white border-indigo-500 shadow-md ring-1 ring-indigo-500/50' : 'bg-slate-800/50 hover:bg-indigo-600/10 hover:text-indigo-300 text-slate-300 border-slate-700/50 hover:border-indigo-500/30'}`}
             >
+              {selectedHook === hook && <div className="absolute left-0 top-0 w-[4px] h-full bg-indigo-500"></div>}
               <div className="absolute left-0 top-0 w-[2px] h-full bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <span className="font-medium leading-relaxed">{hook.replace('[PROBLEMA]', 'perder dinero')}</span>
-              <span className="hidden group-hover:block absolute right-2 top-2 text-[10px] uppercase font-bold text-indigo-400 bg-indigo-400/10 px-1.5 rounded">Usar</span>
+              <span className="font-medium leading-relaxed block pr-12">{hook.replace('[PROBLEMA]', 'perder dinero')}</span>
+              
+              {selectedHook === hook ? (
+                 <span className="absolute right-2 top-2 text-[10px] uppercase font-bold text-white bg-indigo-500 px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                    <CheckCircle2 size={10} /> Usando
+                 </span>
+              ) : (
+                 <span className="hidden group-hover:block absolute right-2 top-2 text-[10px] uppercase font-bold text-indigo-400 bg-indigo-400/10 px-1.5 rounded">Usar</span>
+              )}
             </button>
           ))}
         </div>
@@ -958,8 +966,20 @@ const CreateStudio = ({
 
 
   const handleHookSelect = (h) => {
-    setHook(h);
-    if (!caption && contentType === 'photo') setCaption(h + " ");
+    // Toggle Logic
+    if (hook === h) {
+        setHook(''); // Deselect
+        if (typeof setSelectedHook === 'function') setSelectedHook(''); 
+        // Optional: Remove from caption if it's there? Maybe too aggressive.
+    } else {
+        setHook(h);
+        if (typeof setSelectedHook === 'function') setSelectedHook(h);
+        
+        // Auto-add to caption if empty (only for photo mode usually)
+        if (!caption && contentType === 'photo') {
+            setCaption(h + " ");
+        }
+    }
   };
 
   // Platform toggle handler
@@ -1674,7 +1694,8 @@ const CreateStudio = ({
                 hooks={hooksList}
                 onRegenerateHooks={generateAIHooks}
                 loadingHooks={loadingHooks}
-                onSelectHook={setSelectedHook}
+                onSelectHook={handleHookSelect} // CHANGED: Use local handler to sync state
+                selectedHook={hook} // CHANGED: Pass local state for visual feedback
                 onSelectAudio={(audio) => setAudio(audio)}
                 contentType={contentType}
                 selectedTone={selectedTone}
