@@ -209,13 +209,17 @@ export const facebookService = {
           [];
 
         chartData = impressions
-          .map((imp, idx) => ({
-            name: new Date(imp.end_time).toLocaleDateString("es-ES", {
-              weekday: "short",
-            }),
-            views: imp.value,
-            likes: engagement[idx]?.value || 0,
-          }))
+          .map((imp, idx) => {
+            const date = new Date(imp.end_time);
+            date.setDate(date.getDate() - 1); // Fix: Subtract 1 day because end_time is the end of the period
+            return {
+              name: date.toLocaleDateString("es-ES", {
+                weekday: "short",
+              }),
+              views: imp.value,
+              likes: engagement[idx]?.value || 0,
+            };
+          })
           .slice(-7);
       } else {
         if (insightsRes.status === "fulfilled") {
