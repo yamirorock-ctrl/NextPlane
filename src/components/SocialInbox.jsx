@@ -82,7 +82,7 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
 
   const selectedConversation = conversations.find(c => c.id === selectedSenderId);
 
-  // 1. Fetch Initial Data
+  // 1. Fetch Initial Data & Sync
   useEffect(() => {
     setLoading(true);
     const fetchMessages = async () => {
@@ -92,8 +92,43 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
             .order('created_at', { ascending: true }); // Get all for timeline
         
         if(error) console.error("Error fetching inbox:", error);
-        else setMessages(data || []);
         
+        let loadedMessages = data || [];
+
+        // SYNC: If local DB is empty, try fetching from Facebook
+        if (loadedMessages.length === 0 && pageId && accessToken) {
+            try {
+                console.log("Inbox empty. Syncing history from Facebook...");
+                const fbConvos = await facebookService.getConversations(pageId, accessToken);
+                
+                const historyAuthored = [];
+                fbConvos.forEach(conv => {
+                    if (conv.messages) {
+                        conv.messages.forEach(msg => {
+                            historyAuthored.push({
+                                id: msg.id,
+                                sender_id: conv.id,
+                                sender_name: conv.user,
+                                avatar_url: conv.avatar,
+                                platform: conv.platform,
+                                text: msg.text,
+                                is_from_me: msg.sender === 'me',
+                                created_at: new Date().toISOString(), // Fallback time
+                                status: 'read'
+                            });
+                        });
+                    }
+                });
+                
+                if (historyAuthored.length > 0) {
+                     loadedMessages = historyAuthored;
+                }
+            } catch (err) {
+                console.warn("Could not sync Facebook history:", err);
+            }
+        }
+        
+        setMessages(loadedMessages);
         setLoading(false);
     };
     fetchMessages();
@@ -114,7 +149,7 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
     return () => {
         supabase.removeChannel(channel);
     };
-  }, []);
+  }, [pageId, accessToken]);
 
   // 3. Client-Side Profile Fetching (Repair unknown names)
   useEffect(() => {
