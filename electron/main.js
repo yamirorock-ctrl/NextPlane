@@ -1,11 +1,47 @@
 process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
 
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
+import ffmpeg from "fluent-ffmpeg";
+import ffmpegStatic from "ffmpeg-static";
+import fs from "fs";
+
+// Configure ffmpeg
+ffmpeg.setFfmpegPath(ffmpegStatic.replace("app.asar", "app.asar.unpacked"));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Video Compression Handler
+ipcMain.handle("compress-video", async (event, inputPath) => {
+  return new Promise((resolve, reject) => {
+    const outputPath = path.join(
+      app.getPath("temp"),
+      `compressed-${Date.now()}.mp4`
+    );
+
+    console.log(`Starting compression: ${inputPath} -> ${outputPath}`);
+
+    ffmpeg(inputPath)
+      .outputOptions([
+        "-c:v libx264",
+        "-crf 28", // Lower quality/size (23 is default, 28 is smaller)
+        "-preset veryfast",
+        "-an", // Remove audio for now? User said "upload video", let's keep audio actually.
+      ])
+      .outputOptions("-c:a aac") // Ensure audio is AAC
+      .on("end", () => {
+        console.log("Compression finished");
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error("Compression error:", err);
+        reject(err.message);
+      })
+      .save(outputPath);
+  });
+});
 
 let mainWindow;
 

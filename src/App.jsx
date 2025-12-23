@@ -648,6 +648,7 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
 
 import { uploadMedia } from './services/storage';
 import { renderVideo } from './services/videoRenderer';
+import { compressVideo } from './services/videoCompression';
 import imageCompression from 'browser-image-compression';
 
 const CreateStudio = ({ 
@@ -713,10 +714,23 @@ const CreateStudio = ({
       // Filter and process files
       const processedFilesPromises = files.map(async (file) => {
           // VIDEO CHECK
+          // VIDEO CHECK
           if (file.type.startsWith('video/')) {
-             if (file.size > 100 * 1024 * 1024) { // 100MB Limit Warning
-                 if (!confirm(`El video "${file.name}" pesa ${Math.round(file.size/1024/1024)}MB. Puede tardar en subir. ¿Continuar?`)) {
-                    return null; // Skip this file
+             if (file.size > 50 * 1024 * 1024) { // > 50MB Automatic Compression
+                 console.log(`Video grande detectado (${(file.size/1024/1024).toFixed(1)}MB). Iniciando compresión automática...`);
+                 try {
+                     // Notify user via console or UI if possible (currently using uploading state)
+                     const compressed = await compressVideo(file);
+                     if (compressed.size < file.size) {
+                        console.log(`Video comprimido: ${(file.size/1024/1024).toFixed(1)}MB -> ${(compressed.size/1024/1024).toFixed(1)}MB`);
+                        return compressed;
+                     } else {
+                        console.log("La compresión no redujo el tamaño, usando original.");
+                        return file;
+                     }
+                 } catch (e) {
+                     console.warn("Error en compresión, subiendo original:", e);
+                     return file;
                  }
              }
              return file;
@@ -1012,6 +1026,7 @@ const CreateStudio = ({
     const finalDate = isScheduled ? new Date(scheduledDate).toISOString() : new Date().toISOString();
 
     try {
+
     // 4. Final Data Assembly
     let finalCaption = caption;
 
@@ -1021,14 +1036,46 @@ const CreateStudio = ({
         finalCaption += "\n\n" + generatedHashtags;
     }
 
+    let publicVideoUrl = null;
+
+    // --- VIDEO RENDERING & UPLOAD PIPELINE ---
+    if (contentType === 'video') {
+         try {
+             console.log("🎥 Rendering Video for Publication...");
+             const images = selectedProduct.gallery && selectedProduct.gallery.length > 0 
+                ? selectedProduct.gallery 
+                : [selectedProduct.image_url];
+
+             const blob = await renderVideo({
+                images,
+                audioUrl: customAudioUrl,
+                audioStartTime: audioStartTime, 
+                textOverlay: selectedHook, 
+                onProgress: (p) => console.log("Rendering Pkg:", p)
+             });
+
+             console.log("☁️ Uploading Video to Storage...");
+             const videoFile = new File([blob], `video-${selectedProduct.id}-${Date.now()}.webm`, { type: 'video/webm' });
+             publicVideoUrl = await uploadMedia(videoFile);
+             
+             console.log("✅ Video Ready:", publicVideoUrl);
+
+         } catch (renderError) {
+             console.error("Video Pipeline Error:", renderError);
+             alert("Error renderizando/subiendo video: " + renderError.message);
+             setUploading(false);
+             return;
+         }
+    }
+
+
     const postData = {
         caption: finalCaption,
-        video: null,
+        video: publicVideoUrl, // Set the uploaded URL
         image: selectedProduct.image_url, 
-        // hashtags: hashtags || "", // REMOVED: Caused ReferenceError
         targetPlatforms: targetPlatforms,
         date: finalDate,
-        product: selectedProduct // ADDED: For Relaunch functionality
+        product: selectedProduct 
     };
       
       // IF SCHEDULED: Skip immediate API calls
@@ -1047,14 +1094,19 @@ const CreateStudio = ({
                 const igUserId = localStorage.getItem("meta_instagram_id") || await instagramService.getInstagramAccount(token, pageId);
                 
                 if (igUserId && token) {
-                    // Check if it's a multi-image product (gallery)
-                    if (selectedProduct.gallery && selectedProduct.gallery.length > 1 && contentType === 'photo') {
+                    // Decide content type
+                    if (contentType === 'video' && postData.video) {
+                         console.log("Posting Reel (Video)...");
+                         await instagramService.publishVideo(token, igUserId, postData.video, postData.caption);
+                        results.push("Instagram Reels");
+                    } else if (selectedProduct.gallery && selectedProduct.gallery.length > 1 && contentType === 'photo') {
                         console.log("Posting Carousel...", selectedProduct.gallery);
                         await instagramService.publishCarousel(token, igUserId, selectedProduct.gallery, postData.caption);
+                        results.push("Instagram Carousel");
                     } else {
                         await instagramService.publishPhoto(token, igUserId, selectedProduct.image_url, postData.caption);
+                        results.push("Instagram Post");
                     }
-                    results.push("Instagram");
                 } else {
                     throw new Error("No hay cuenta de Instagram vinculada.");
                 }
@@ -1071,7 +1123,8 @@ const CreateStudio = ({
                 const pageId = localStorage.getItem("meta_page_id");
                 
                 if (pageId && token) {
-                    await facebookService.postToFacebook(postData.caption, selectedProduct.image_url, pageId, token);
+                    const mediaUrl = (contentType === 'video' && postData.video) ? postData.video : selectedProduct.image_url;
+                    await facebookService.postToFacebook(postData.caption, mediaUrl, pageId, token);
                     results.push(`Facebook`);
                 } else {
                     throw new Error("No hay página de Facebook configurada.");
@@ -1087,6 +1140,7 @@ const CreateStudio = ({
         if (targetPlatforms.whatsapp) {
           try {
              // Pass caption and the store link (if it exists)
+             // For video, we might want to just link to store or send video file (not supported easily via web link)
              const link = whatsappService.getShareLink(postData.caption, selectedProduct.link);
              
              // Use Electron shell if available to open external, otherwise window.open
@@ -1110,14 +1164,14 @@ const CreateStudio = ({
                 product_id: selectedProduct.id,
                 platform: Object.keys(targetPlatforms).filter(k => targetPlatforms[k]).join(','), 
                 content_type: contentType,
-                image_url: selectedProduct.image_url,
+                image_url: postData.video || selectedProduct.image_url, // Save the actual media URL used
                 caption: caption,
                 scheduled_date: finalDate,
                 status: isScheduled ? 'scheduled' : 'published'
             };
             if (supabase) {
                 // Refresh local timeline if needed
-                onSchedule({ ...postData, product: selectedProduct, image: selectedProduct.image_url, date: finalDate });
+                onSchedule({ ...postData, product: selectedProduct, image: dbPost.image_url, date: finalDate });
             }
         } catch(dbErr) {
             console.error("DB Save Error:", dbErr);
