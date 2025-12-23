@@ -26,11 +26,13 @@ ipcMain.handle("compress-video", async (event, inputPath) => {
     ffmpeg(inputPath)
       .outputOptions([
         "-c:v libx264",
-        "-crf 28", // Lower quality/size (23 is default, 28 is smaller)
+        "-crf 30", // More aggressive compression (was 28)
         "-preset veryfast",
-        "-an", // Remove audio for now? User said "upload video", let's keep audio actually.
+        "-pix_fmt yuv420p", // Required for broad player/platform compatibility
+        "-movflags +faststart", // Moves metadata to front (Essential for web/social uploads)
+        // "-an", // REMOVED: Keep audio!
       ])
-      .outputOptions("-c:a aac") // Ensure audio is AAC
+      .outputOptions(["-c:a aac", "-b:a 128k", "-ac 2", "-ar 44100"])
       .on("end", () => {
         console.log("Compression finished");
         resolve(outputPath);

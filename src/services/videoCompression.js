@@ -14,18 +14,33 @@ export const compressVideo = async (file) => {
 
   try {
     const { ipcRenderer } = window.require("electron");
+    const fs = window.require("fs");
+    const path = window.require("path");
+    const os = window.require("os");
 
-    // We need the full path for ffmpeg. File object in Electron has 'path' property
-    const inputPath = file.path;
+    // 1. Get Input Path (robustly)
+    let inputPath = file.path;
 
+    // If file.path is missing (common in modern Electron), write to temp
     if (!inputPath) {
-      console.warn("No file path found on File object. Are we in Electron?");
-      return file;
+      console.log("No file.path found, writing to temp file...");
+      const tempDir = os.tmpdir();
+      const tempFilePath = path.join(
+        tempDir,
+        `upload-temp-${Date.now()}-${file.name}`
+      );
+
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      fs.writeFileSync(tempFilePath, buffer);
+      inputPath = tempFilePath;
     }
 
     console.log("Requesting compression for:", inputPath);
 
-    // Send to Main process
+    // 2. Send to Main process
+    // We expect the main process to optimize heavily to ensure < 50MB
     const compressedPath = await ipcRenderer.invoke(
       "compress-video",
       inputPath
@@ -33,23 +48,26 @@ export const compressVideo = async (file) => {
 
     console.log("Compression success, new path:", compressedPath);
 
-    // Fetch the local file to create a new Blob/File object
-    const response = await fetch(`file://${compressedPath}`);
-    const blob = await response.blob();
+    // 3. Read back result (using fs to avoid CSP/Fetch errors with file://)
+    // Since we have nodeIntegration: true, we can use fs directly
+    const compressedBuffer = fs.readFileSync(compressedPath);
+    const blob = new Blob([compressedBuffer], { type: "video/mp4" });
 
     // Create new File object
     const newFile = new File([blob], file.name, { type: "video/mp4" });
 
-    // Attach path property again if needed by other electron logic (though uploads usually use blob)
-    // Note: 'path' is read-only on File usually, but we can try to define it or just rely on blob
-    Object.defineProperty(newFile, "path", {
-      value: compressedPath,
-      writable: false,
-    });
+    // Clean up temp input if we created it
+    if (file.path !== inputPath) {
+      try {
+        fs.unlinkSync(inputPath);
+      } catch (e) {
+        /* ignore */
+      }
+    }
 
     return newFile;
   } catch (error) {
-    console.error("Compression Failed:", error);
+    console.error("Compression Logic Failed:", error);
     // Fallback to original file
     return file;
   }

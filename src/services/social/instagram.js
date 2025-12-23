@@ -105,40 +105,80 @@ export const instagramService = {
   // 4. Publish a Video to Instagram (Reels)
   publishVideo: async (accessToken, igUserId, videoUrl, caption) => {
     try {
+      console.log("Starting IG Video Publish:", { igUserId, videoUrl });
+
       // Step A: Create Media Container for Video
-      // media_type=VIDEO and video_url is required
       const containerUrl = `https://graph.facebook.com/v19.0/${igUserId}/media?media_type=VIDEO&video_url=${encodeURIComponent(
         videoUrl
       )}&caption=${encodeURIComponent(caption)}&access_token=${accessToken}`;
 
       const containerRes = await fetch(containerUrl, { method: "POST" });
       const containerData = await containerRes.json();
+      console.log("Container Response:", containerData);
 
-      if (containerData.error) throw new Error(containerData.error.message);
+      if (containerData.error)
+        throw new Error(
+          "Container Creation Fail: " + containerData.error.message
+        );
       const creationId = containerData.id;
 
-      // Step B: Publish Media Container (Wait for processing usually needed?)
-      // For simple API uploads, sometimes we need to check status, but let's try direct publish first.
-      // If it fails with "Media not ready", we need a status check loop.
-
+      // Step B: Polling for Status
       console.log(
         "Video Container Created:",
         creationId,
-        "Waiting for status..."
+        "Waiting for processing..."
       );
 
-      // Simple delay to allow processing (naive approach)
-      await new Promise((r) => setTimeout(r, 5000));
+      let attempts = 0;
+      const MAX_ATTEMPTS = 120; // Increased to 120s just in case
+      let isReady = false;
 
+      while (attempts < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, 2000)); // Check every 2s
+        attempts++;
+
+        const statusUrl = `https://graph.facebook.com/v19.0/${creationId}?fields=status_code,status&access_token=${accessToken}`;
+        const statusRes = await fetch(statusUrl);
+        const statusData = await statusRes.json();
+
+        // LOG STATUS to see what IG says
+        console.log(`[${attempts}] Status Check:`, statusData);
+
+        if (statusData.status_code === "FINISHED") {
+          isReady = true;
+          break;
+        }
+
+        if (statusData.status_code === "ERROR") {
+          throw new Error(
+            "Instagram Video Processing Failed: " +
+              (statusData.status || "Unknown Error")
+          );
+        }
+      }
+
+      if (!isReady) {
+        throw new Error("Timeout waiting for Instagram Video processing.");
+      }
+
+      console.log("Video Ready. Publishing...");
       const publishUrl = `https://graph.facebook.com/v19.0/${igUserId}/media_publish?creation_id=${creationId}&access_token=${accessToken}`;
       const publishRes = await fetch(publishUrl, { method: "POST" });
       const publishData = await publishRes.json();
+      console.log("Publish Response:", publishData);
 
-      if (publishData.error) throw new Error(publishData.error.message);
+      if (publishData.error)
+        throw new Error("Publish Fail: " + publishData.error.message);
 
       return publishData.id;
     } catch (error) {
       console.error("Error publishing Video to IG:", error);
+      if (error.response) {
+        try {
+          const body = await error.response.json();
+          console.error("API Error Body:", body);
+        } catch (e) {}
+      }
       throw error;
     }
   },

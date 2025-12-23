@@ -898,6 +898,16 @@ const CreateStudio = ({
   // Multi-Platform State
   const [targetPlatforms, setTargetPlatforms] = useState({ instagram: true, facebook: false });
   const [contentType, setContentType] = useState('photo'); // Default to photo
+  
+  // Auto-detect content type when product changes
+  useEffect(() => {
+    if (selectedProduct) {
+       const isVideo = selectedProduct.type === 'video' || 
+                       (selectedProduct.image_url && (selectedProduct.image_url.match(/\.(mp4|webm|mov|ogg)$/i) || selectedProduct.image_url.includes('video')));
+       if (isVideo && contentType !== 'video') setContentType('video');
+       if (!isVideo && contentType !== 'photo') setContentType('photo');
+    }
+  }, [selectedProduct?.id]);
 
   const [hook, setHook] = useState('');
   const [audio, setAudio] = useState('');
@@ -1071,7 +1081,7 @@ const CreateStudio = ({
 
     const postData = {
         caption: finalCaption,
-        video: publicVideoUrl, // Set the uploaded URL
+        video: publicVideoUrl || (contentType === 'video' ? selectedProduct.image_url : null), // Set the uploaded URL or fallback to product video
         image: selectedProduct.image_url, 
         targetPlatforms: targetPlatforms,
         date: finalDate,
@@ -1091,6 +1101,7 @@ const CreateStudio = ({
             try {
                 const token = localStorage.getItem("meta_page_access_token") || localStorage.getItem("meta_access_token");
                 const pageId = localStorage.getItem("meta_page_id");
+                console.log("DBG: Launching IG", { pageId, tokenLen: token?.length });
                 const igUserId = localStorage.getItem("meta_instagram_id") || await instagramService.getInstagramAccount(token, pageId);
                 
                 if (igUserId && token) {
@@ -2753,13 +2764,35 @@ const AppContent = () => {
   useEffect(() => {
      if(settings) {
          if(settings.gemini_api_key) setApiKey(settings.gemini_api_key);
+         
          if(settings.meta_app_id) setMetaAppId(settings.meta_app_id);
          if(settings.meta_app_secret) setMetaAppSecret(settings.meta_app_secret);
-         if(settings.meta_access_token) setMetaAccessToken(settings.meta_access_token);
-         if(settings.meta_page_id) setMetaPageId(settings.meta_page_id);
-         if(settings.meta_page_name) setMetaPageName(settings.meta_page_name);
-         if(settings.meta_page_access_token) setMetaPageAccessToken(settings.meta_page_access_token);
-         if(settings.meta_instagram_id) setMetaInstagramId(settings.meta_instagram_id);
+         
+         if(settings.meta_access_token) {
+             setMetaAccessToken(settings.meta_access_token);
+             localStorage.setItem("meta_access_token", settings.meta_access_token);
+         }
+         
+         if(settings.meta_page_id) {
+             setMetaPageId(settings.meta_page_id);
+             localStorage.setItem("meta_page_id", settings.meta_page_id);
+         }
+         
+         if(settings.meta_page_name) {
+             setMetaPageName(settings.meta_page_name);
+             localStorage.setItem("meta_page_name", settings.meta_page_name);
+         }
+         
+         if(settings.meta_page_access_token) {
+             setMetaPageAccessToken(settings.meta_page_access_token);
+             localStorage.setItem("meta_page_access_token", settings.meta_page_access_token);
+         }
+         
+         if(settings.meta_instagram_id) {
+             setMetaInstagramId(settings.meta_instagram_id);
+             localStorage.setItem("meta_instagram_id", settings.meta_instagram_id);
+         }
+
          if(settings.tiktok_client_key) setTiktokKey(settings.tiktok_client_key);
          if(settings.tiktok_client_secret) setTiktokSecret(settings.tiktok_client_secret);
          if(settings.ai_knowledge_base) setKnowledgeBase(settings.ai_knowledge_base);
