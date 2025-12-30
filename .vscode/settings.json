@@ -3,7 +3,5 @@
   "scss.lint.unknownAtRules": "ignore",
   "less.lint.unknownAtRules": "ignore",
   "css.customData": [".vscode/css-custom-data.json"],
-  "files.associations": {
-    "*.css": "tailwindcss"
-  }
+  "files.associations": {}
 }

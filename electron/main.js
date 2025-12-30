@@ -26,11 +26,12 @@ ipcMain.handle("compress-video", async (event, inputPath) => {
     ffmpeg(inputPath)
       .outputOptions([
         "-c:v libx264",
-        "-crf 30", // More aggressive compression (was 28)
+        "-profile:v main", // Better compatibility
+        "-crf 28", // Slightly higher quality
         "-preset veryfast",
-        "-pix_fmt yuv420p", // Required for broad player/platform compatibility
-        "-movflags +faststart", // Moves metadata to front (Essential for web/social uploads)
-        // "-an", // REMOVED: Keep audio!
+        "-pix_fmt yuv420p",
+        "-movflags +faststart",
+        // Removed explicit mapping to let ffmpeg pick best streams auto
       ])
       .outputOptions(["-c:a aac", "-b:a 128k", "-ac 2", "-ar 44100"])
       .on("end", () => {

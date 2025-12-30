@@ -2763,39 +2763,42 @@ const AppContent = () => {
   // 1. Load Settings from DB when ready
   useEffect(() => {
      if(settings) {
-         if(settings.gemini_api_key) setApiKey(settings.gemini_api_key);
-         
-         if(settings.meta_app_id) setMetaAppId(settings.meta_app_id);
-         if(settings.meta_app_secret) setMetaAppSecret(settings.meta_app_secret);
-         
-         if(settings.meta_access_token) {
-             setMetaAccessToken(settings.meta_access_token);
-             localStorage.setItem("meta_access_token", settings.meta_access_token);
-         }
-         
-         if(settings.meta_page_id) {
-             setMetaPageId(settings.meta_page_id);
-             localStorage.setItem("meta_page_id", settings.meta_page_id);
-         }
-         
-         if(settings.meta_page_name) {
-             setMetaPageName(settings.meta_page_name);
-             localStorage.setItem("meta_page_name", settings.meta_page_name);
-         }
-         
-         if(settings.meta_page_access_token) {
-             setMetaPageAccessToken(settings.meta_page_access_token);
-             localStorage.setItem("meta_page_access_token", settings.meta_page_access_token);
-         }
-         
-         if(settings.meta_instagram_id) {
-             setMetaInstagramId(settings.meta_instagram_id);
-             localStorage.setItem("meta_instagram_id", settings.meta_instagram_id);
-         }
+         try {
+             if(settings.gemini_api_key) setApiKey(settings.gemini_api_key);
+             if(settings.meta_app_id) setMetaAppId(settings.meta_app_id);
+             if(settings.meta_app_secret) setMetaAppSecret(settings.meta_app_secret);
+             
+             if(settings.meta_access_token) {
+                 setMetaAccessToken(settings.meta_access_token);
+                 localStorage.setItem("meta_access_token", settings.meta_access_token);
+             }
+             
+             if(settings.meta_page_id) {
+                 setMetaPageId(settings.meta_page_id);
+                 localStorage.setItem("meta_page_id", settings.meta_page_id);
+             }
+             
+             if(settings.meta_page_name) {
+                 setMetaPageName(settings.meta_page_name);
+                 localStorage.setItem("meta_page_name", settings.meta_page_name);
+             }
+             
+             if(settings.meta_page_access_token) {
+                 setMetaPageAccessToken(settings.meta_page_access_token);
+                 localStorage.setItem("meta_page_access_token", settings.meta_page_access_token);
+             }
+             
+             if(settings.meta_instagram_id) {
+                 setMetaInstagramId(settings.meta_instagram_id);
+                 localStorage.setItem("meta_instagram_id", settings.meta_instagram_id);
+             }
 
-         if(settings.tiktok_client_key) setTiktokKey(settings.tiktok_client_key);
-         if(settings.tiktok_client_secret) setTiktokSecret(settings.tiktok_client_secret);
-         if(settings.ai_knowledge_base) setKnowledgeBase(settings.ai_knowledge_base);
+             if(settings.tiktok_client_key) setTiktokKey(settings.tiktok_client_key);
+             if(settings.tiktok_client_secret) setTiktokSecret(settings.tiktok_client_secret);
+             if(settings.ai_knowledge_base) setKnowledgeBase(settings.ai_knowledge_base);
+         } catch (err) {
+             console.error("Error syncing settings to storage:", err);
+         }
      }
   }, [settings]);
 
