@@ -246,4 +246,68 @@ export const instagramService = {
       return null;
     }
   },
+
+  // 6. Get Comments (Social Listening)
+  getComments: async (accessToken, igUserId) => {
+    try {
+      // Fetch media objects (last 20) with their comments
+      const fields =
+        "id,media_type,media_url,thumbnail_url,permalink,timestamp,comments.limit(25){id,text,timestamp,username,like_count,replies}";
+      const url = `https://graph.facebook.com/v19.0/${igUserId}/media?fields=${fields}&limit=20&access_token=${accessToken}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.error) throw new Error(data.error.message);
+
+      const posts = data.data || [];
+      let allComments = [];
+
+      posts.forEach((post) => {
+        if (post.comments && post.comments.data) {
+          post.comments.data.forEach((comment) => {
+            allComments.push({
+              id: comment.id,
+              user: comment.username || "Usuario de Instagram",
+              text: comment.text,
+              platform: "instagram",
+              sentiment: "neutral", // Placeholder
+              time: new Date(comment.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              timestamp: comment.timestamp, // Keep raw for sorting
+              likes: comment.like_count,
+              media_url:
+                post.media_type === "VIDEO"
+                  ? post.thumbnail_url
+                  : post.media_url,
+              permalink: post.permalink,
+              link: post.permalink,
+            });
+          });
+        }
+      });
+
+      return allComments;
+    } catch (e) {
+      console.error("Error getting IG comments:", e);
+      return [];
+    }
+  },
+
+  // 7. Reply to Comment
+  replyToComment: async (accessToken, commentId, message) => {
+    try {
+      const url = `https://graph.facebook.com/v19.0/${commentId}/replies?message=${encodeURIComponent(message)}&access_token=${accessToken}`;
+      const response = await fetch(url, { method: "POST" });
+      const data = await response.json();
+
+      if (data.error) throw new Error(data.error.message);
+      return data.id;
+    } catch (e) {
+      console.error("Error replying to IG comment:", e);
+      throw e;
+    }
+  },
 };

@@ -322,31 +322,25 @@ export const facebookService = {
     }
   },
 
-  // NEW: Fetch Comments for Social Listening
   getPageComments: async (pageId, accessToken) => {
-    if (!pageId || !accessToken) return [];
-
-    const appSecret = localStorage.getItem("meta_app_secret");
-    const proof = await generateAppSecretProof(accessToken, appSecret);
-    const proofParam = proof ? `&appsecret_proof=${proof}` : "";
-
-    // Fetch feed with comments
-    // data structure: feed -> posts -> comments
-    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/feed?fields=message,created_time,permalink_url,comments.limit(5){message,from,created_time,like_count}&limit=5&access_token=${accessToken}${proofParam}`;
-
     try {
-      const res = await fetch(endpoint);
-      const data = await res.json();
+      if (!pageId || !accessToken) return [];
+
+      const fields =
+        "id,message,created_time,comments.summary(true),likes.summary(true)";
+      // Get posts, then iterate comments
+      // Optimized: get posts with nested comments
+      const url = `https://graph.facebook.com/v19.0/${pageId}/posts?fields=id,message,created_time,permalink_url,comments.limit(50){id,message,from,created_time,like_count,comment_count}&limit=10&access_token=${accessToken}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
       if (data.error) {
-        // Critical Auth Errors: Throw so UI can handle (e.g. show Reconnect button)
-        if (data.error.code === 190 || data.error.code === 102) {
-          throw new Error(data.error.message || "Session Expired");
-        }
-        console.warn("Error getting comments:", data.error);
-        return [];
+        console.error("FB Comments API Error:", data.error);
+        throw new Error(data.error.message);
       }
 
-      let allComments = [];
+      const allComments = [];
       const posts = data.data || [];
 
       posts.forEach((post) => {
@@ -362,6 +356,7 @@ export const facebookService = {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
+              timestamp: comment.created_time, // Keep raw for sorting
               likes: comment.like_count,
               originalPost: post.message
                 ? post.message.substring(0, 30) + "..."
@@ -369,6 +364,7 @@ export const facebookService = {
               replyContext: `Comentario en: "${
                 post.message ? post.message.substring(0, 50) : "Post"
               }"`, // Context for AI
+              permalink: post.permalink_url,
             });
           });
         }
@@ -379,6 +375,16 @@ export const facebookService = {
       console.error("Error fetching comments:", e);
       return [];
     }
+  },
+
+  replyToComment: async (commentId, message, accessToken) => {
+    // POST /{comment-id}/comments?message=...
+    const url = `https://graph.facebook.com/v19.0/${commentId}/comments?message=${encodeURIComponent(message)}&access_token=${accessToken}`;
+    const response = await fetch(url, { method: "POST" });
+    const data = await response.json();
+
+    if (data.error) throw new Error(data.error.message);
+    return data.id;
   },
 
   postToInstagram: async (caption, imageUrl, accessToken, instagramId) => {

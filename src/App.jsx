@@ -746,7 +746,7 @@ const AppContent = () => {
                 pageName={metaPageName}
                 instagramId={metaInstagramId}
             />}
-            {activeTab === 'listening' && <SocialListening pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} setActiveTab={setActiveTab} />}
+            {activeTab === 'listening' && <SocialListening pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
             {activeTab === 'training' && <BrandVoiceTrainer />}
             {activeTab === 'analytics' && <AnalyticsDashboard pageId={settings?.meta_page_id} accessToken={settings?.meta_page_access_token || settings?.meta_access_token} pageName={settings?.meta_page_name} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
             {activeTab === 'settings' && <SettingsView 

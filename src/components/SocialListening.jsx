@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { generateReply, analyzeSentiment } from '../services/ai';
 import { facebookService } from '../services/social/facebook';
+import { instagramService } from '../services/social/instagram';
 import { 
   Search, 
   TrendingUp, 
@@ -45,18 +46,9 @@ const SENTIMENT_DATA_DEFAULT = [
   { name: 'Negativo', value: 0, color: SENTIMENT_COLORS.negative },
 ];
 
-const TREND_DATA = [
-  { time: '10:00', mentions: 12 },
-  { time: '11:00', mentions: 19 },
-  { time: '12:00', mentions: 45 }, // Viral spike
-  { time: '13:00', mentions: 30 },
-  { time: '14:00', mentions: 22 },
-  { time: '15:00', mentions: 28 },
-];
-
-const SocialListening = ({ pageId, accessToken, pageName, setActiveTab }) => {
+const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActiveTab }) => {
   const [keywords, setKeywords] = useState(() => JSON.parse(localStorage.getItem('listening_keywords')) || ['Next Plane', 'Ecommerce', 'Viral']);
-  const [mentions, setMentions] = useState([]); // This will hold REAL mentions now
+  const [mentions, setMentions] = useState([]); 
   const [loadingReal, setLoadingReal] = useState(false);
   const [newKeyword, setNewKeyword] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
@@ -68,7 +60,6 @@ const SocialListening = ({ pageId, accessToken, pageName, setActiveTab }) => {
      
      const counts = { positive: 0, neutral: 0, negative: 0 };
      mentions.forEach(m => {
-         // Default to neutral if undefined
          const s = m.sentiment || 'neutral';
          if(counts[s] !== undefined) counts[s]++;
          else counts.neutral++;
@@ -81,30 +72,57 @@ const SocialListening = ({ pageId, accessToken, pageName, setActiveTab }) => {
      ];
   }, [mentions]);
 
+  // Computed Trend Data (Real)
+  const trendData = React.useMemo(() => {
+      if(mentions.length === 0) return [];
+      
+      const hours = {};
+      mentions.forEach(m => {
+          if(!m.timestamp) return;
+          const date = new Date(m.timestamp);
+          const hourKey = date.toLocaleTimeString([], {hour: '2-digit', minute:'00'}); // Group by hour
+          hours[hourKey] = (hours[hourKey] || 0) + 1;
+      });
+
+      // Fill missing hours or just show active ones
+      const sorted = Object.keys(hours).sort().map(k => ({
+          time: k,
+          mentions: hours[k]
+      }));
+      
+      return sorted.length > 0 ? sorted : [{time: 'Now', mentions: 0}];
+  }, [mentions]);
+
   // Reply State
   const [openReplyId, setOpenReplyId] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [generatingReply, setGeneratingReply] = useState(false);
 
-  // Load Real Data
+  // Load Real Data (FB + IG)
   useEffect(() => {
-     if (pageId && accessToken) {
+     const fetchData = async () => {
+        if (!accessToken) return;
         setLoadingReal(true);
         setError(null);
-        facebookService.getPageComments(pageId, accessToken)
-          .then(async comments => {
-             // Initial Load: set comments with default 'neutral' (from service)
-             setMentions(comments);
-          })
-          .catch(err => {
-              console.error("Error loading comments", err);
-              // Check if error is object or string
-              const msg = err.message || (typeof err === 'string' ? err : 'Error desconocido');
-              setError(msg);
-          })
-          .finally(() => setLoadingReal(false));
-     }
-  }, [pageId, accessToken]);
+        try {
+            const promises = [];
+            if(pageId) promises.push(facebookService.getPageComments(pageId, accessToken));
+            if(instagramId) promises.push(instagramService.getComments(accessToken, instagramId));
+            
+            const results = await Promise.all(promises);
+            const all = results.flat().sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            setMentions(all);
+        } catch(err) {
+            console.error("Error loading comments", err);
+            const msg = err.message || (typeof err === 'string' ? err : 'Error desconocido');
+            setError(msg);
+        } finally {
+            setLoadingReal(false);
+        }
+     };
+     fetchData();
+  }, [pageId, instagramId, accessToken]);
 
 
   useEffect(() => {
@@ -168,12 +186,24 @@ const SocialListening = ({ pageId, accessToken, pageName, setActiveTab }) => {
       }
   };
 
-  const handleSend = () => {
-      // Future: Connect to facebookService.sendReply
-      alert(`Respuesta enviada (Simulado): "${replyText}"`);
-      // Optimistic Update?
-      setOpenReplyId(null);
-      setReplyText('');
+  const handleSend = async () => {
+      if(!openReplyId || !replyText) return;
+      
+      const mention = mentions.find(m => m.id === openReplyId);
+      if(!mention) return;
+
+      try {
+          if(mention.platform === 'facebook') {
+              await facebookService.replyToComment(mention.id, replyText, accessToken);
+          } else if(mention.platform === 'instagram') {
+              await instagramService.replyToComment(accessToken, mention.id, replyText);
+          }
+          alert("✅ Respuesta enviada con éxito!");
+          setOpenReplyId(null);
+          setReplyText('');
+      } catch(e) {
+          alert("Error enviando respuesta: " + e.message);
+      }
   };
 
   return (
@@ -288,7 +318,7 @@ const SocialListening = ({ pageId, accessToken, pageName, setActiveTab }) => {
                    </div>
                    <div className="flex-1 w-full min-h-0 relative">
                      <ResponsiveContainer width="100%" height="100%">
-                       <BarChart data={TREND_DATA}>
+                       <BarChart data={trendData}>
                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                          <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} />
                          <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} />
