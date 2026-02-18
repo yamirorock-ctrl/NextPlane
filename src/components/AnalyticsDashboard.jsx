@@ -57,7 +57,7 @@ import { instagramService } from '../services/social/instagram';
 
 // ... (metrics state definition)
 
-const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId }) => { // Added instagramId
+const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setActiveTab }) => { // Added instagramId
   const [data, setData] = React.useState(engagementData);
   const [metrics, setMetrics] = React.useState({
       reach: "125.4K",
@@ -178,12 +178,12 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId }) => {
              <span className="bg-red-500/10 text-red-300 text-[10px] font-bold px-3 py-1 rounded-full border border-red-500/20 flex items-center gap-2">
                 ERROR API: {metrics.error}
              </span>
-             {metrics.error.includes("Session has expired") && (
+             {(metrics.error.includes("Session") || metrics.error.includes("expired") || metrics.error.includes("190")) && (
                  <button 
-                    onClick={() => facebookService.login(import.meta.env.VITE_FACEBOOK_APP_ID)}
+                    onClick={() => setActiveTab && setActiveTab('settings')}
                     className="bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full transition-colors"
                  >
-                    Reconectar Ahora
+                    Reconectar Ahora (Ir a Ajustes)
                  </button>
              )}
           </div>
@@ -225,14 +225,14 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Engagement Chart (Big) */}
-        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl relative min-w-0">
+        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl relative min-w-0 flex flex-col h-[350px]">
           {loading && <div className="absolute inset-0 bg-slate-900/80 z-10 flex items-center justify-center text-indigo-400 font-bold">Cargando Insights...</div>}
           <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
             <TrendingUp size={20} className="text-indigo-500"/>
             Rendimiento Semanal
           </h3>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minHeight={0}>
+          <div className="flex-1 w-full min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data}>
                 <defs>
                   <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">

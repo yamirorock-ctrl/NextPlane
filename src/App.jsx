@@ -2437,6 +2437,7 @@ const SettingsView = ({
                      placeholder="................" 
                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm"
                  />
+                 <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">Requerido para generar token de 60 días (permanente).</p>
              </div>
              <div>
                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">User Access Token</label>
@@ -2452,14 +2453,18 @@ const SettingsView = ({
                                     val = match[1];
                                     
                                     // AUTOMATIC EXCHANGE
-                                    alert("⏳ Canjeando por token de larga duración... Espere un momento.");
-                                    try {
-                                      const longToken = await facebookService.exchangeForLongLivedToken(val, metaAppId, metaAppSecret);
-                                      alert("✅ ¡Token 'Eterno' Generado y Guardado! (60 días)");
-                                      val = longToken;
-                                    } catch(e) {
-                                      console.error(e);
-                                      alert("⚠️ Error generando Token Eterno:\n" + e.message + "\n\nSe usará el token corto (1 hora).");
+                                    if(metaAppSecret) {
+                                      alert("⏳ Canjeando por token de larga duración... Espere un momento.");
+                                      try {
+                                        const longToken = await facebookService.exchangeForLongLivedToken(val, metaAppId, metaAppSecret);
+                                        alert("✅ ¡Token 'Eterno' Generado y Guardado! (60 días)");
+                                        val = longToken;
+                                      } catch(e) {
+                                        console.error(e);
+                                        alert("⚠️ Error generando Token Eterno:\n" + e.message + "\n\nSe usará el token corto (1 hora).");
+                                      }
+                                    } else {
+                                        alert("⚠️ Advertencia: No has ingresado el 'App Secret'.\n\nEl token que pegaste caducará en 1 hora. Para obtener 60 días, ingresa el Secret arriba.");
                                     }
                                 }
                             }
@@ -2470,23 +2475,43 @@ const SettingsView = ({
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:ring-2 focus:ring-blue-500 transition-all font-mono text-xs truncate"
                     />
                     <button 
-                        onClick={() => {
+                        onClick={async () => {
                             if(!metaAccessToken) return alert("Pega un token primero");
                             
                             const btn = document.getElementById('validate-btn');
                             if(btn) {
-                                btn.innerText = "⏳";
+                                btn.innerText = "⏳ mejorando token...";
                                 btn.disabled = true;
                             }
 
-                            console.log("Validating token:", metaAccessToken.substring(0, 10) + "...");
+                            let currentToken = metaAccessToken;
 
-                            facebookService.getPages(metaAccessToken)
+                            // 1. Attempt to Upgrade Token (User Short -> User Long)
+                            // This is CRITICAL: Getting pages with a Long User Token results in Permanent Page Tokens.
+                            if(metaAppId && metaAppSecret) {
+                                try {
+                                    const longToken = await facebookService.exchangeForLongLivedToken(currentToken, metaAppId, metaAppSecret);
+                                    console.log("✅ Token Upgraded successfully before validation.");
+                                    currentToken = longToken;
+                                    setMetaAccessToken(currentToken);
+                                    saveField('meta_access_token', currentToken);
+                                } catch(e) {
+                                    console.warn("Token Upgrade Skipped/Failed:", e.message);
+                                    alert("⚠️ Falló el canje de token de 60 días: " + e.message + "\n\nSe usará el token de 1 hora.");
+                                }
+                            } else {
+                                alert("⚠️ Falta App Secret. Tu token solo durará 1 HORA.\n\nPara obtener un token de 60 días (permanente), debes llenar el campo 'App Secret' arriba antes de validar.");
+                            }
+
+                            console.log("Validating token:", currentToken.substring(0, 10) + "...");
+
+                            // 2. Fetch Pages
+                            facebookService.getPages(currentToken)
                                 .then(pages => {
                                     console.log("Pages found:", pages);
                                     if(pages.length > 0) {
                                         setFoundPages(pages); 
-                                        alert(`✅ ¡Encontré ${pages.length} páginas!\n\nSelecciona abajo a cuál quieres conectarte.`);
+                                        alert(`✅ ¡Token de 60 días verificado!\n\nSe encontraron ${pages.length} páginas.\nSelecciona tu página abajo para finalizar.`);
                                     } else {
                                         setFoundPages([]);
                                         alert("El token es válido pero NO encontré Fan Pages administradas por ti.");
@@ -2494,7 +2519,7 @@ const SettingsView = ({
                                 })
                                 .catch(e => {
                                     console.error("Validation Error:", e);
-                                    alert("Error validando: " + e.message + "\n\nRevisa que el token esté completo.");
+                                    alert("Error validando: " + e.message + "\n\nRevisa que el token esté completo y verifiques App ID / Secret.");
                                 })
                                 .finally(() => {
                                     if(btn) {
@@ -2503,8 +2528,9 @@ const SettingsView = ({
                                     }
                                 });
                         }}
+                        id="validate-btn"
                      >
-                        Validar
+                        Verificar y Guardar
                     </button>
                  </div>
 
@@ -3244,9 +3270,9 @@ const AppContent = () => {
                 pageName={metaPageName}
                 instagramId={metaInstagramId}
             />}
-            {activeTab === 'listening' && <SocialListening pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} />}
+            {activeTab === 'listening' && <SocialListening pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} setActiveTab={setActiveTab} />}
             {activeTab === 'training' && <BrandVoiceTrainer />}
-            {activeTab === 'analytics' && <AnalyticsDashboard pageId={settings?.meta_page_id} accessToken={settings?.meta_page_access_token || settings?.meta_access_token} pageName={settings?.meta_page_name} instagramId={metaInstagramId} />}
+            {activeTab === 'analytics' && <AnalyticsDashboard pageId={settings?.meta_page_id} accessToken={settings?.meta_page_access_token || settings?.meta_access_token} pageName={settings?.meta_page_name} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
             {activeTab === 'settings' && <SettingsView 
               apiKey={apiKey} setApiKey={setApiKey}
               metaAppId={metaAppId} setMetaAppId={setMetaAppId}

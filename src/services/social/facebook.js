@@ -301,6 +301,10 @@ export const facebookService = {
       const res = await fetch(endpoint);
       const data = await res.json();
       if (data.error) {
+        // Critical Auth Errors: Throw so UI can handle (e.g. show Reconnect button)
+        if (data.error.code === 190 || data.error.code === 102) {
+          throw new Error(data.error.message || "Session Expired");
+        }
         console.warn("Error getting comments:", data.error);
         return [];
       }
