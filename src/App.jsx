@@ -2253,6 +2253,20 @@ const SettingsView = ({
   // Local state for found pages list
   const [foundPages, setFoundPages] = useState([]);
 
+  // Auto-Validate if token exists (Magic UX)
+  useEffect(() => {
+    if (metaAccessToken && foundPages.length === 0) {
+        console.log("Auto-validating pages with existing token...");
+        facebookService.getPages(metaAccessToken)
+            .then(pages => {
+                if (pages.length > 0) {
+                    setFoundPages(pages);
+                }
+            })
+            .catch(console.error); // Silent fail on auto-check
+    }
+  }, [metaAccessToken]);
+
   return (
   <div className="max-w-xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
      <div className="text-center">
@@ -2850,12 +2864,47 @@ const AppContent = () => {
       updateSettings({ [field]: value }).catch(console.error);
   };
 
-  // Detect OAuth Redirect (The "Second App" Scenario)
+  // Detect OAuth Redirect & Auto-Exchange Token
   useEffect(() => {
-     if(window.location.hash && window.location.hash.includes("access_token=")) {
-        setIsAuthRedirect(true);
+     const hash = window.location.hash;
+     if (hash && hash.includes("access_token=")) {
+        // 1. Extract Token
+        const params = new URLSearchParams(hash.substring(1));
+        const shortToken = params.get("access_token");
+        
+        if (shortToken) {
+            console.log("🔗 Token detectado en URL. Iniciando canje automático...");
+            
+            // 2. Get Credentials (Try State -> Settings -> LocalStorage)
+            const appId = metaAppId || settings?.meta_app_id || localStorage.getItem("meta_app_id");
+            const appSecret = metaAppSecret || settings?.meta_app_secret || localStorage.getItem("meta_app_secret");
+
+            if (appId && appSecret) {
+                // 3. Exchange
+                facebookService.exchangeForLongLivedToken(shortToken, appId, appSecret)
+                    .then(longToken => {
+                        console.log("✅ Token canjeado automáticamente:", longToken.substring(0, 10) + "...");
+                        
+                        // 4. Save & Update State
+                        setMetaAccessToken(longToken);
+                        saveField('meta_access_token', longToken);
+                        alert("✅ ¡Conexión con Facebook Exitosa! Token guardado.");
+                        
+                        // 5. Clear URL to prevent re-runs
+                        window.history.replaceState(null, null, ' ');
+                        setIsAuthRedirect(false); // Hide manual modal
+                    })
+                    .catch(err => {
+                        console.error("Auto-Exchange Error:", err);
+                        alert("⚠️ Error canjeando token automáticamente: " + err.message);
+                    });
+            } else {
+                console.warn("⚠️ Token detectado pero faltan App ID/Secret. Se requiere intervención manual.");
+                setIsAuthRedirect(true); 
+            }
+        }
      }
-  }, []);
+  }, [settings, metaAppId, metaAppSecret]);
 
   // Init AI Responder & Helper
   useEffect(() => {
