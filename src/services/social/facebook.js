@@ -1,3 +1,29 @@
+/* Helper: Generate appsecret_proof using Web Crypto API */
+const generateAppSecretProof = async (accessToken, appSecret) => {
+  if (!appSecret) return null;
+  try {
+    const encoder = new TextEncoder();
+    const key = await window.crypto.subtle.importKey(
+      "raw",
+      encoder.encode(appSecret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const signature = await window.crypto.subtle.sign(
+      "HMAC",
+      key,
+      encoder.encode(accessToken),
+    );
+    return Array.from(new Uint8Array(signature))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  } catch (e) {
+    console.error("Failed to generate appsecret_proof:", e);
+    return null;
+  }
+};
+
 export const facebookService = {
   // Initialize SDK if needed (or we use direct REST API)
   init: () => {
@@ -52,13 +78,17 @@ export const facebookService = {
     return null;
   },
 
-  getPages: async (userAccessToken) => {
+  getPages: async (userAccessToken, silent = false) => {
     if (!userAccessToken) throw new Error("No Access Token provided");
 
-    const accountsUrl = `https://graph.facebook.com/v19.0/me/accounts?fields=name,id,access_token,instagram_business_account,is_published&limit=100&access_token=${userAccessToken}`;
-    const permissionsUrl = `https://graph.facebook.com/v19.0/me/permissions?access_token=${userAccessToken}`;
-    const probeUrl = `https://graph.facebook.com/v19.0/910582745470832?fields=name,access_token,instagram_business_account,is_published&access_token=${userAccessToken}`;
-    const probeUrl2 = `https://graph.facebook.com/v19.0/61584675617144?fields=name,access_token,instagram_business_account,is_published&access_token=${userAccessToken}`; // The missing page
+    const appSecret = localStorage.getItem("meta_app_secret");
+    const proof = await generateAppSecretProof(userAccessToken, appSecret);
+    const proofParam = proof ? `&appsecret_proof=${proof}` : "";
+
+    const accountsUrl = `https://graph.facebook.com/v19.0/me/accounts?fields=name,id,access_token,instagram_business_account,is_published&limit=100&access_token=${userAccessToken}${proofParam}`;
+    const permissionsUrl = `https://graph.facebook.com/v19.0/me/permissions?access_token=${userAccessToken}${proofParam}`;
+    const probeUrl = `https://graph.facebook.com/v19.0/910582745470832?fields=name,access_token,instagram_business_account,is_published&access_token=${userAccessToken}${proofParam}`;
+    // const probeUrl2 = `https://graph.facebook.com/v19.0/61584675617144?fields=name,access_token,instagram_business_account,is_published&access_token=${userAccessToken}${proofParam}`; // The missing page
 
     try {
       const results = await Promise.allSettled([
@@ -91,6 +121,9 @@ export const facebookService = {
 
       if (pagesData.error) {
         console.error("Pages API Error:", pagesData.error);
+        if (pagesData.error.code === 190) {
+          throw new Error("Session expired or invalid token (Code 190)");
+        }
         throw new Error(pagesData.error.message);
       }
 
@@ -131,27 +164,12 @@ export const facebookService = {
         }
       }
 
-      // Logic for specific page probing (New Missing Page)
-      /* if (probeData2) {
-        if (probeData2.id) {
-          const alreadyExists = safeData.find((p) => p.id === probeData2.id);
-          if (!alreadyExists) {
-            safeData.push(probeData2);
-            report += `\n✨ Página 'Faltante' (${probeData2.name}) detectada y agregada manualmente.\n`;
-          } else {
-            report += `\nℹ️ Página 'Faltante' (${probeData2.name}) ya estaba en la lista principal.\n`;
-          }
-        } else {
-          console.error("Probe 2 Error:", probeData2);
-          report += `\n❌ Error buscando página faltante (ID: 61584675617144):\n   ${
-            probeData2.error?.message || JSON.stringify(probeData2)
-          }\n`;
-        }
-      } */
-
       console.log("Pages fetched:", safeData);
-      // ALWAYS ALERT REPORT FOR NOW to debug missing page
-      alert(report);
+
+      // Only alert if NOT silent (manual check)
+      if (!silent) {
+        alert(report);
+      }
 
       return safeData;
     } catch (error) {
@@ -163,10 +181,14 @@ export const facebookService = {
   // NEW: Fetch Page Details for Knowledge Base
   getPageDetails: async (pageId, accessToken) => {
     try {
+      const appSecret = localStorage.getItem("meta_app_secret");
+      const proof = await generateAppSecretProof(accessToken, appSecret);
+      const proofParam = proof ? `&appsecret_proof=${proof}` : "";
+
       const fields =
         "name,about,bio,description,website,phone,emails,location,hours,general_info";
       const response = await fetch(
-        `https://graph.facebook.com/v19.0/${pageId}?fields=${fields}&access_token=${accessToken}`,
+        `https://graph.facebook.com/v19.0/${pageId}?fields=${fields}&access_token=${accessToken}${proofParam}`,
       );
       const data = await response.json();
       if (data.error) throw new Error(data.error.message);
@@ -185,9 +207,14 @@ export const facebookService = {
     // 1. Chart Data: Reach & Engagement from Insights API (Daily)
     // 2. Total Fans: From Page Object directly (safer than Insights)
 
-    const insightsUrl = `https://graph.facebook.com/v19.0/${pageId}/insights?metric=page_impressions_unique,page_post_engagements&period=day&date_preset=this_month&access_token=${accessToken}`;
+    // Retrieve App Secret from storage to sign the request (Fixes 'Bad signature')
+    const appSecret = localStorage.getItem("meta_app_secret");
+    const proof = await generateAppSecretProof(accessToken, appSecret);
+    const proofParam = proof ? `&appsecret_proof=${proof}` : "";
+
+    const insightsUrl = `https://graph.facebook.com/v19.0/${pageId}/insights?metric=page_impressions_unique,page_post_engagements&period=day&date_preset=this_month&access_token=${accessToken}${proofParam}`;
     // Get total fans directly from Page Node
-    const pageDataUrl = `https://graph.facebook.com/v19.0/${pageId}?fields=fan_count,followers_count&access_token=${accessToken}`;
+    const pageDataUrl = `https://graph.facebook.com/v19.0/${pageId}?fields=fan_count,followers_count&access_token=${accessToken}${proofParam}`;
 
     try {
       const [insightsRes, pageRes] = await Promise.allSettled([
@@ -225,7 +252,9 @@ export const facebookService = {
         if (insightsRes.status === "fulfilled") {
           const errBody = await insightsRes.value.json().catch(() => ({}));
           console.error("❌ FB Insights Error JSON:", errBody);
-          error = errBody?.error?.message || insightsRes.value.statusText;
+          error =
+            (errBody?.error?.message || insightsRes.value.statusText) +
+            (errBody?.error?.code ? ` (Code ${errBody.error.code})` : "");
         } else {
           console.error("❌ FB Insights Network Error:", insightsRes.reason);
           error = insightsRes.reason?.message;
@@ -254,9 +283,13 @@ export const facebookService = {
   getConversations: async (pageId, accessToken) => {
     if (!pageId || !accessToken) return [];
 
+    const appSecret = localStorage.getItem("meta_app_secret");
+    const proof = await generateAppSecretProof(accessToken, appSecret);
+    const proofParam = proof ? `&appsecret_proof=${proof}` : "";
+
     // Fetch conversations (DMs)
     // fields: senders, snippet, updated_time, unread_count
-    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages{message,from}&access_token=${accessToken}`;
+    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages{message,from}&access_token=${accessToken}${proofParam}`;
 
     try {
       const res = await fetch(endpoint);
@@ -293,9 +326,13 @@ export const facebookService = {
   getPageComments: async (pageId, accessToken) => {
     if (!pageId || !accessToken) return [];
 
+    const appSecret = localStorage.getItem("meta_app_secret");
+    const proof = await generateAppSecretProof(accessToken, appSecret);
+    const proofParam = proof ? `&appsecret_proof=${proof}` : "";
+
     // Fetch feed with comments
     // data structure: feed -> posts -> comments
-    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/feed?fields=message,created_time,permalink_url,comments.limit(5){message,from,created_time,like_count}&limit=5&access_token=${accessToken}`;
+    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/feed?fields=message,created_time,permalink_url,comments.limit(5){message,from,created_time,like_count}&limit=5&access_token=${accessToken}${proofParam}`;
 
     try {
       const res = await fetch(endpoint);
@@ -378,6 +415,12 @@ export const facebookService = {
           published: true,
         };
 
+    const appSecret = localStorage.getItem("meta_app_secret");
+    const proof = await generateAppSecretProof(access_token, appSecret);
+    if (proof) {
+      bodyPayload.appsecret_proof = proof;
+    }
+
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -440,17 +483,24 @@ export const facebookService = {
       settings;
 
     try {
+      const appSecret = localStorage.getItem("meta_app_secret");
+      const proof = await generateAppSecretProof(
+        metaPageAccessToken,
+        appSecret,
+      );
+      const proofParam = proof ? `&appsecret_proof=${proof}` : "";
+
       let url = "";
 
       if (platform === "facebook") {
         // Graph API: POST /me/messages
-        url = `https://graph.facebook.com/v19.0/${metaPageId}/messages?access_token=${metaPageAccessToken}`;
+        url = `https://graph.facebook.com/v19.0/${metaPageId}/messages?access_token=${metaPageAccessToken}${proofParam}`;
       } else if (platform === "instagram") {
         // IG Graph API: POST /{ig-user-id}/messages
         const igId = settings.metaInstagramId;
         if (!igId)
           throw new Error("Missing Instagram Business ID. Reconnect Page.");
-        url = `https://graph.facebook.com/v19.0/${igId}/messages?access_token=${metaPageAccessToken}`;
+        url = `https://graph.facebook.com/v19.0/${igId}/messages?access_token=${metaPageAccessToken}${proofParam}`;
       }
 
       console.log(`🚀 API Request to: ${url}`);
@@ -485,9 +535,13 @@ export const facebookService = {
   subscribeApp: async (pageId, pageAccessToken) => {
     console.log("Subscribing App to Page Webhooks:", pageId);
 
+    const appSecret = localStorage.getItem("meta_app_secret");
+    const proof = await generateAppSecretProof(pageAccessToken, appSecret);
+    const proofParam = proof ? `&appsecret_proof=${proof}` : "";
+
     // Helper to make the request
     const subscribe = async (fields) => {
-      const url = `https://graph.facebook.com/v19.0/${pageId}/subscribed_apps?subscribed_fields=${fields}&access_token=${pageAccessToken}`;
+      const url = `https://graph.facebook.com/v19.0/${pageId}/subscribed_apps?subscribed_fields=${fields}&access_token=${pageAccessToken}${proofParam}`;
       const res = await fetch(url, { method: "POST" });
       return await res.json();
     };

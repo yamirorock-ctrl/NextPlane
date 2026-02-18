@@ -59,6 +59,7 @@ import { instagramService } from '../services/social/instagram';
 
 const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setActiveTab }) => { // Added instagramId
   const [data, setData] = React.useState(engagementData);
+  const [platformChartData, setPlatformChartData] = React.useState(platformData); // State for Pie Chart
   const [metrics, setMetrics] = React.useState({
       reach: "125.4K",
       reachChange: "+12.5%",
@@ -66,7 +67,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
       engagementChange: "+3.1%",
       fans: "45.2K",
       fansChange: "+850",
-      breakdown: null // New field for breakdown
+      breakdown: null 
   });
   const [loading, setLoading] = React.useState(false);
   const [isRealData, setIsRealData] = React.useState(false);
@@ -101,22 +102,39 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                 // Process IG (Merge)
                 if(igRes) {
                     totalFans += (igRes.followers || 0);
-                    // IG Reach is fetched differently (daily), assume we supplement
-                    // For chart, we try to add if dates align, or just use what we have
+
                     if (igRes.chartData && igRes.chartData.length > 0) {
-                         // Naive merge by index (last 7 days)
-                         mergedChart = mergedChart.map((item, idx) => {
-                             const igItem = igRes.chartData[igRes.chartData.length - 1 - (mergedChart.length - 1 - idx)]; // Align from end
-                             return {
-                                 ...item,
-                                 views: item.views + (igItem ? igItem.views : 0),
-                             };
-                         });
+                        if (mergedChart.length === 0) {
+                             // If no FB data, use IG data as base
+                             mergedChart = igRes.chartData;
+                        } else {
+                             // Merge IG into FB
+                             mergedChart = mergedChart.map((item, idx) => {
+                                 const igItem = igRes.chartData[igRes.chartData.length - 1 - (mergedChart.length - 1 - idx)]; 
+                                 return {
+                                     ...item,
+                                     views: item.views + (igItem ? igItem.views : 0),
+                                     likes: item.likes + (igItem ? igItem.likes : 0) // Also merge likes
+                                 };
+                             });
+                        }
                     }
                 }
                 
                 // Update State
                 setData(mergedChart.length > 0 ? mergedChart : engagementData);
+
+                // Update Pie Chart Data
+                const fbCount = fbRes?.totalFans || 0;
+                const igCount = igRes?.followers || 0;
+                if (fbCount > 0 || igCount > 0) {
+                    setPlatformChartData([
+                        { name: 'Facebook', value: fbCount },
+                        { name: 'Instagram', value: igCount },
+                        // { name: 'TikTok', value: 0 } // Future
+                    ]);
+                }
+
                 setMetrics(prev => ({
                     ...prev,
                     reach: totalReach > 0 ? totalReach.toLocaleString() : prev.reach,
@@ -124,15 +142,15 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                     fans: totalFans > 0 ? totalFans.toLocaleString() : prev.fans,
                     fansChange: "+0",
                     breakdown: {
-                        fb: fbRes?.totalFans || 0,
-                        ig: igRes?.followers || 0
+                        fb: fbCount,
+                        ig: igCount
                     }
                 }));
             })
             .catch(err => {
                 console.error("Analytics Error:", err);
                 if (err.message.includes("190") || err.message.includes("Session is invalid")) {
-                    alert("⚠️ Tu sesión de Facebook caducó. Por favor reconecta en Configuración.");
+                    // alert("⚠️ Tu sesión de Facebook caducó. Por favor reconecta en Configuración."); // Removed redundant alert
                     setMetrics(prev => ({ ...prev, error: err.message }));
                     setIsRealData(true);
                 }
@@ -146,7 +164,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative">
-      {/* Status Banners */}
+      {/* ... (Status Banners same as before) */}
       {!isRealData && !loading && (
           <div className="absolute -top-4 left-0 w-full text-center py-1 z-50">
              <span className="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-3 py-1 rounded-full border border-amber-500/20">
@@ -232,7 +250,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
             Rendimiento Semanal
           </h3>
           <div className="flex-1 w-full min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={0}>
               <AreaChart data={data}>
                 <defs>
                   <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
@@ -265,7 +283,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
              <ResponsiveContainer width="100%" height="100%" minHeight={0}>
               <PieChart>
                 <Pie
-                  data={platformData}
+                  data={platformChartData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -273,7 +291,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {platformData.map((entry, index) => (
+                  {platformChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />
                   ))}
                 </Pie>
