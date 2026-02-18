@@ -2798,8 +2798,14 @@ const AppContent = () => {
      if(settings) {
          try {
              if(settings.gemini_api_key) setApiKey(settings.gemini_api_key);
-             if(settings.meta_app_id) setMetaAppId(settings.meta_app_id);
-             if(settings.meta_app_secret) setMetaAppSecret(settings.meta_app_secret);
+             if(settings.meta_app_id) {
+                 setMetaAppId(settings.meta_app_id);
+                 localStorage.setItem("meta_app_id", settings.meta_app_id);
+             }
+             if(settings.meta_app_secret) {
+                 setMetaAppSecret(settings.meta_app_secret);
+                 localStorage.setItem("meta_app_secret", settings.meta_app_secret);
+             }
              
              if(settings.meta_access_token) {
                  setMetaAccessToken(settings.meta_access_token);

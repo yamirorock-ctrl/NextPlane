@@ -33,7 +33,7 @@ export const facebookService = {
 
     if (isElectron) {
       alert(
-        "⚠️ MODO LIVE ACTIVO:\n\n1. Se abrirá Facebook > Inicia sesión.\n2. Al terminar, serás redirigido a tu Web (viral-boost-lilac.vercel.app).\n3. COPIA LA URL COMPLETA de esa página (empezará por https://viral-boost-lilac...#access_token=...)\n4. Pégala aquí."
+        "⚠️ MODO LIVE ACTIVO:\n\n1. Se abrirá Facebook > Inicia sesión.\n2. Al terminar, serás redirigido a tu Web (viral-boost-lilac.vercel.app).\n3. COPIA LA URL COMPLETA de esa página (empezará por https://viral-boost-lilac...#access_token=...)\n4. Pégala aquí.",
       );
       window.open(authUrl, "_blank");
     } else {
@@ -103,7 +103,7 @@ export const facebookService = {
         (p) =>
           (report += `   - ${p.name} (ID: ${p.id}) ${
             p.is_published === false ? "[⚠️ NO PUBLICADA]" : "[✅ PÚBLICA]"
-          }\n`)
+          }\n`),
       );
 
       report += `\n2. Permisos concedidos:\n`;
@@ -112,7 +112,7 @@ export const facebookService = {
         const hasIgMsg = permsData.data.find(
           (p) =>
             p.permission === "instagram_manage_messages" &&
-            p.status === "granted"
+            p.status === "granted",
         );
         if (!hasIgMsg)
           console.warn("⚠️ MISSING 'instagram_manage_messages' permission!");
@@ -166,7 +166,7 @@ export const facebookService = {
       const fields =
         "name,about,bio,description,website,phone,emails,location,hours,general_info";
       const response = await fetch(
-        `https://graph.facebook.com/v19.0/${pageId}?fields=${fields}&access_token=${accessToken}`
+        `https://graph.facebook.com/v19.0/${pageId}?fields=${fields}&access_token=${accessToken}`,
       );
       const data = await response.json();
       if (data.error) throw new Error(data.error.message);
@@ -393,10 +393,15 @@ export const facebookService = {
   },
 
   exchangeForLongLivedToken: async (shortLivedToken, appId, appSecret) => {
-    // const appId = localStorage.getItem("meta_app_id");
-    // const appSecret = localStorage.getItem("meta_app_secret");
+    // Fallback to localStorage if arguments are missing (Defense in Depth)
+    if (!appId) appId = localStorage.getItem("meta_app_id");
+    if (!appSecret) appSecret = localStorage.getItem("meta_app_secret");
 
     if (!appId || !appSecret) {
+      console.error("Missing App ID/Secret. Args:", {
+        appId,
+        hasSecret: !!appSecret,
+      });
       throw new Error("Falta App ID o App Secret (Pásalos como argumentos).");
     }
 
@@ -410,7 +415,7 @@ export const facebookService = {
       if (data.access_token) {
         console.log(
           "✅ Token Exchanged Successfully! Expires in:",
-          data.expires_in
+          data.expires_in,
         );
         return data.access_token;
       } else {
@@ -461,7 +466,7 @@ export const facebookService = {
       if (data.error) {
         console.error("❌ Meta API Error Data:", data.error);
         throw new Error(
-          `Meta Error (${data.error.code}): ${data.error.message}`
+          `Meta Error (${data.error.code}): ${data.error.message}`,
         );
       }
 
@@ -493,7 +498,7 @@ export const facebookService = {
         (data.error.message.includes("metadata") || data.error.code === 200)
       ) {
         console.warn(
-          "⚠️ 'feed' subscription failed. Retrying with ONLY 'messages'..."
+          "⚠️ 'feed' subscription failed. Retrying with ONLY 'messages'...",
         );
         data = await subscribe("messages,messaging_postbacks");
       }
@@ -504,7 +509,7 @@ export const facebookService = {
       } else {
         console.error("Webhook Subscription Validation Failed:", data);
         throw new Error(
-          data.error ? data.error.message : "Subscription Failed"
+          data.error ? data.error.message : "Subscription Failed",
         );
       }
     } catch (e) {
