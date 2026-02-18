@@ -53,10 +53,11 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 );
 
 import { facebookService } from '../services/social/facebook';
+import { instagramService } from '../services/social/instagram';
 
-// ... (existing imports and MOCK Data)
+// ... (metrics state definition)
 
-const AnalyticsDashboard = ({ pageId, accessToken, pageName }) => {
+const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId }) => { // Added instagramId
   const [data, setData] = React.useState(engagementData);
   const [metrics, setMetrics] = React.useState({
       reach: "125.4K",
@@ -64,42 +65,75 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName }) => {
       engagement: "8.2%",
       engagementChange: "+3.1%",
       fans: "45.2K",
-      fansChange: "+850"
+      fansChange: "+850",
+      breakdown: null // New field for breakdown
   });
   const [loading, setLoading] = React.useState(false);
   const [isRealData, setIsRealData] = React.useState(false);
 
   // Fetch Real Insights with HEAVY Debugging
   React.useEffect(() => {
-      console.log("ANALYTICS: Checking Credentials...", { pageId, accessToken });
+      console.log("ANALYTICS: Checking Credentials...", { pageId, accessToken, instagramId });
 
       if(pageId && accessToken) {
           console.log("ANALYTICS: Credentials found. Switching to Real Data.");
           setLoading(true);
           setIsRealData(true); 
           
-          facebookService.getPageInsights(pageId, accessToken)
-            .then(res => {
-                console.log("ANALYTICS: Data fetched:", res);
-                if(res && res.chartData) {
-                    setData(res.chartData);
-                    setMetrics(prev => ({
-                        ...prev,
-                        reach: res.chartData.reduce((acc, curr) => acc + curr.views, 0).toLocaleString(),
-                        reachChange: "+0%", 
-                        fans: res.totalFans.toLocaleString(),
-                        fansChange: "+0"
-                    }));
+          Promise.all([
+             facebookService.getPageInsights(pageId, accessToken),
+             instagramId ? instagramService.getInsights(accessToken, instagramId) : Promise.resolve(null)
+          ])
+            .then(([fbRes, igRes]) => {
+                console.log("ANALYTICS: Data fetched.", { fbRes, igRes });
+                
+                let mergedChart = [];
+                let totalReach = 0;
+                let totalFans = 0;
+                
+                // Process FB
+                if(fbRes && fbRes.chartData) {
+                    mergedChart = fbRes.chartData;
+                    totalReach += fbRes.chartData.reduce((acc, curr) => acc + curr.views, 0);
+                    totalFans += fbRes.totalFans;
                 }
+
+                // Process IG (Merge)
+                if(igRes) {
+                    totalFans += (igRes.followers || 0);
+                    // IG Reach is fetched differently (daily), assume we supplement
+                    // For chart, we try to add if dates align, or just use what we have
+                    if (igRes.chartData && igRes.chartData.length > 0) {
+                         // Naive merge by index (last 7 days)
+                         mergedChart = mergedChart.map((item, idx) => {
+                             const igItem = igRes.chartData[igRes.chartData.length - 1 - (mergedChart.length - 1 - idx)]; // Align from end
+                             return {
+                                 ...item,
+                                 views: item.views + (igItem ? igItem.views : 0),
+                             };
+                         });
+                    }
+                }
+                
+                // Update State
+                setData(mergedChart.length > 0 ? mergedChart : engagementData);
+                setMetrics(prev => ({
+                    ...prev,
+                    reach: totalReach > 0 ? totalReach.toLocaleString() : prev.reach,
+                    reachChange: "+0%", 
+                    fans: totalFans > 0 ? totalFans.toLocaleString() : prev.fans,
+                    fansChange: "+0",
+                    breakdown: {
+                        fb: fbRes?.totalFans || 0,
+                        ig: igRes?.followers || 0
+                    }
+                }));
             })
             .catch(err => {
                 console.error("Analytics Error:", err);
-                // Handle Token Expiry (#190) specifically
                 if (err.message.includes("190") || err.message.includes("Session is invalid")) {
                     alert("⚠️ Tu sesión de Facebook caducó. Por favor reconecta en Configuración.");
-                    // User requested to stay in Real Data mode to debug
-                    console.error("Analytics API failed:", err);
-                    setMetrics(prev => ({ ...prev, error: err.message })); // Store error
+                    setMetrics(prev => ({ ...prev, error: err.message }));
                     setIsRealData(true);
                 }
             })
@@ -108,7 +142,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName }) => {
          console.log("ANALYTICS: Missing Credentials. Staying in Simulation Mode.");
          setIsRealData(false);
       }
-  }, [pageId, accessToken]);
+  }, [pageId, accessToken, instagramId]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative">

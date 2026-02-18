@@ -9,7 +9,7 @@ export const instagramService = {
     try {
       // We need to fetch the Page and ask for its 'instagram_business_account' field
       const response = await fetch(
-        `https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${accessToken}`
+        `https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${accessToken}`,
       );
       const data = await response.json();
 
@@ -32,7 +32,7 @@ export const instagramService = {
     try {
       // Step A: Create Media Container
       const containerUrl = `https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(
-        imageUrl
+        imageUrl,
       )}&caption=${encodeURIComponent(caption)}&access_token=${accessToken}`;
 
       const containerRes = await fetch(containerUrl, { method: "POST" });
@@ -62,7 +62,7 @@ export const instagramService = {
       // Step A: Create Item Containers for each image/video
       const itemCreationPromises = mediaItems.map(async (url) => {
         const itemUrl = `https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(
-          url
+          url,
         )}&is_carousel_item=true&access_token=${accessToken}`;
 
         const res = await fetch(itemUrl, { method: "POST" });
@@ -75,14 +75,14 @@ export const instagramService = {
 
       // Step B: Create Carousel Container
       const carouselUrl = `https://graph.facebook.com/v19.0/${igUserId}/media?media_type=CAROUSEL&children=${itemIds.join(
-        ","
+        ",",
       )}&caption=${encodeURIComponent(caption)}&access_token=${accessToken}`;
 
       const carouselRes = await fetch(carouselUrl, { method: "POST" });
       const carouselData = await carouselRes.json();
       if (carouselData.error)
         throw new Error(
-          "Carousel Container Error: " + carouselData.error.message
+          "Carousel Container Error: " + carouselData.error.message,
         );
 
       const creationId = carouselData.id;
@@ -109,7 +109,7 @@ export const instagramService = {
 
       // Step A: Create Media Container for Video
       const containerUrl = `https://graph.facebook.com/v19.0/${igUserId}/media?media_type=VIDEO&video_url=${encodeURIComponent(
-        videoUrl
+        videoUrl,
       )}&caption=${encodeURIComponent(caption)}&access_token=${accessToken}`;
 
       const containerRes = await fetch(containerUrl, { method: "POST" });
@@ -118,7 +118,7 @@ export const instagramService = {
 
       if (containerData.error)
         throw new Error(
-          "Container Creation Fail: " + containerData.error.message
+          "Container Creation Fail: " + containerData.error.message,
         );
       const creationId = containerData.id;
 
@@ -126,7 +126,7 @@ export const instagramService = {
       console.log(
         "Video Container Created:",
         creationId,
-        "Waiting for processing..."
+        "Waiting for processing...",
       );
 
       let attempts = 0;
@@ -152,7 +152,7 @@ export const instagramService = {
         if (statusData.status_code === "ERROR") {
           throw new Error(
             "Instagram Video Processing Failed: " +
-              (statusData.status || "Unknown Error")
+              (statusData.status || "Unknown Error"),
           );
         }
       }
@@ -180,6 +180,70 @@ export const instagramService = {
         } catch (e) {}
       }
       throw error;
+    }
+  },
+
+  // 5. Get Instagram Insights (Followers, Reach, etc.)
+  getInsights: async (accessToken, igUserId) => {
+    if (!igUserId || !accessToken) return null;
+
+    try {
+      // A. Account Info (Followers)
+      const userUrl = `https://graph.facebook.com/v19.0/${igUserId}?fields=followers_count,media_count&access_token=${accessToken}`;
+
+      // B. Daily Insights (last 30 days)
+      // Note: metric=impressions,reach
+      const insightsUrl = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=impressions,reach&period=day&date_preset=this_month&access_token=${accessToken}`;
+
+      const [userRes, insightsRes] = await Promise.allSettled([
+        fetch(userUrl),
+        fetch(insightsUrl),
+      ]);
+
+      let followers = 0;
+      let chartData = [];
+      let reachTotal = 0;
+
+      // Process User Data
+      if (userRes.status === "fulfilled" && userRes.value.ok) {
+        const userData = await userRes.value.json();
+        followers = userData.followers_count || 0;
+      } else {
+        console.warn("IG User Data Load Failed", userRes);
+      }
+
+      // Process Insights Data
+      if (insightsRes.status === "fulfilled" && insightsRes.value.ok) {
+        const data = await insightsRes.value.json();
+        const impressions =
+          data.data.find((m) => m.name === "impressions")?.values || [];
+
+        // Map to Chart Format (Same as Facebook)
+        chartData = impressions
+          .map((imp) => {
+            const date = new Date(imp.end_time);
+            date.setDate(date.getDate() - 1);
+            return {
+              name: date.toLocaleDateString("es-ES", { weekday: "short" }),
+              views: imp.value,
+              // likes: 0 // IG API doesn't give daily "likes" aggregate easily in this endpoint, requires media iteration
+            };
+          })
+          .slice(-7); // Last 7 days
+
+        reachTotal = impressions.reduce((acc, curr) => acc + curr.value, 0);
+      } else {
+        console.warn("IG Insights Load Failed", insightsRes);
+      }
+
+      return {
+        followers,
+        chartData,
+        reachTotal,
+      };
+    } catch (e) {
+      console.error("IG Insights Critical Error:", e);
+      return null;
     }
   },
 };

@@ -2247,6 +2247,7 @@ const SettingsView = ({
   tiktokSecret, setTiktokSecret,
   setMetaPageName, // New prop
   metaPageAccessToken, setMetaPageAccessToken, // New prop for Page Token
+  metaInstagramId, setMetaInstagramId, // New prop for IG
   knowledgeBase, setKnowledgeBase, // New prop for AI
   saveField // New prop for DB saving
 }) => {
@@ -2502,11 +2503,29 @@ const SettingsView = ({
                                     }
                                 });
                         }}
-                        id="validate-btn"
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-xl font-bold text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
+                     >
                         Validar
                     </button>
+                 </div>
+
+                 {/* Instagram ID (Auto-filled but editable) */}
+                 <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1 uppercase flex items-center gap-2">
+                        <Instagram size={12} className="text-pink-500"/> Instagram Business ID
+                    </label>
+                    <input 
+                        type="text" 
+                        value={metaInstagramId || ''}
+                        onChange={(e) => {
+                            setMetaInstagramId && setMetaInstagramId(e.target.value);
+                            saveField && saveField('meta_instagram_id', e.target.value);
+                        }}
+                        placeholder="Detectado automáticamente al conectar página..."
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-300 focus:ring-2 focus:ring-pink-500 transition-all font-mono text-sm"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                        Si tu cuenta de Instagram es de empresa y está vinculada a la Fan Page, esto se llena solo.
+                    </p>
                  </div>
 
                  {/* Found Pages List */}
@@ -3227,7 +3246,7 @@ const AppContent = () => {
             />}
             {activeTab === 'listening' && <SocialListening pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} />}
             {activeTab === 'training' && <BrandVoiceTrainer />}
-            {activeTab === 'analytics' && <AnalyticsDashboard pageId={settings?.meta_page_id} accessToken={settings?.meta_page_access_token || settings?.meta_access_token} pageName={settings?.meta_page_name} />}
+            {activeTab === 'analytics' && <AnalyticsDashboard pageId={settings?.meta_page_id} accessToken={settings?.meta_page_access_token || settings?.meta_access_token} pageName={settings?.meta_page_name} instagramId={metaInstagramId} />}
             {activeTab === 'settings' && <SettingsView 
               apiKey={apiKey} setApiKey={setApiKey}
               metaAppId={metaAppId} setMetaAppId={setMetaAppId}
@@ -3238,6 +3257,7 @@ const AppContent = () => {
               tiktokSecret={tiktokSecret} setTiktokSecret={setTiktokSecret}
               setMetaPageName={setMetaPageName} // Passed here!
               metaPageAccessToken={metaPageAccessToken} setMetaPageAccessToken={setMetaPageAccessToken}
+              metaInstagramId={metaInstagramId} setMetaInstagramId={setMetaInstagramId}
               knowledgeBase={knowledgeBase} setKnowledgeBase={setKnowledgeBase}
               saveField={saveField}
             />}
