@@ -1487,9 +1487,9 @@ const CreateStudio = ({
 
             {/* Section 2: Store Catalog - Grid Layout */}
             <div>
-              <button 
+              <div 
                 onClick={() => setShowCatalog(!showCatalog)}
-                className="w-full flex items-center justify-between mb-3 pl-1 group hover:bg-slate-800/50 p-2 rounded-lg transition-colors border border-transparent hover:border-slate-800"
+                className="w-full flex items-center justify-between mb-3 pl-1 group hover:bg-slate-800/50 p-2 rounded-lg transition-colors border border-transparent hover:border-slate-800 cursor-pointer"
               >
                  <div className="flex items-center gap-2">
                     <div className="bg-emerald-500/20 p-1.5 rounded-lg"><ShoppingBag size={16} className="text-emerald-400"/></div>
@@ -1514,7 +1514,7 @@ const CreateStudio = ({
                     </div>
                     {showCatalog ? <ChevronUp size={16} className="text-slate-500"/> : <ChevronDown size={16} className="text-slate-500"/>}
                 </div>
-              </button>
+                </div>
               
               {showCatalog && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[320px] overflow-y-auto custom-scrollbar pr-1 animate-in slide-in-from-top-2 fade-in duration-300">
