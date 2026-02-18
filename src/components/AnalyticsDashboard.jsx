@@ -112,12 +112,30 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative">
-      {/* Status Banner */}
+      {/* Status Banners */}
       {!isRealData && !loading && (
           <div className="absolute -top-4 left-0 w-full text-center py-1 z-50">
              <span className="bg-amber-500/10 text-amber-300 text-[10px] font-bold px-3 py-1 rounded-full border border-amber-500/20">
                 MODO SIMULACIÓN — Conecta tu cuenta en Configuración para ver datos reales.
              </span>
+          </div>
+      )}
+
+      {isRealData && !loading && !metrics.error && (
+          <div className="absolute -top-4 left-0 w-full text-center py-1 z-50 flex items-center justify-center gap-2">
+             <span className="bg-emerald-500/10 text-emerald-300 text-[10px] font-bold px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-2 cursor-help" title="Los datos provienen directamente de la API Graph de Facebook">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                DATOS REALES (LIVE)
+             </span>
+             <button 
+                onClick={() => alert("Datos Crudos de API:\n\nAlcance: " + metrics.reach + "\nFans: " + metrics.fans + "\n\n(Estos números vienen de Facebook)")}
+                className="text-[10px] text-slate-500 hover:text-white underline"
+             >
+                Verificar
+             </button>
           </div>
       )}
 
