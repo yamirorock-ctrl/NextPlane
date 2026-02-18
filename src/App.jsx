@@ -25,6 +25,7 @@ import MediaPreview from './components/MediaPreview';
 import { tiktokService } from './services/social/tiktok';
 import { whatsappService } from './services/social/whatsapp';
 import { aiResponder } from './services/aiResponder';
+import { syncProductsFromFeed } from './utils/productSync';
 import { 
   LayoutDashboard, 
   Plane, 
@@ -681,6 +682,27 @@ const CreateStudio = ({
   const [audioType, setAudioType] = useState('file'); // 'file' | 'url'
   const [audioStartTime, setAudioStartTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const result = await syncProductsFromFeed();
+      if(result.success) {
+        alert(result.message);
+        // Refresh products from Supabase
+        const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+        if(data) setProducts(data);
+      } else {
+        alert("Error: " + result.message);
+      }
+    } catch(e) {
+      alert("Error syncing: " + e.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const [editingImage, setEditingImage] = useState(null); // URL of image to edit
   const [showEditor, setShowEditor] = useState(false);
@@ -1476,6 +1498,17 @@ const CreateStudio = ({
                     </label>
                  </div>
                  <div className="flex items-center gap-2">
+                     <button
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         handleSync();
+                       }}
+                       disabled={syncing}
+                       className="p-1 hover:bg-slate-700 rounded-lg text-emerald-400 transition-colors disabled:opacity-50"
+                       title="Sincronizar desde Web"
+                     >
+                        <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+                     </button>
                     <div className="px-2 py-0.5 bg-slate-800 rounded-full border border-slate-700">
                         <span className="text-[10px] text-slate-400 font-mono">{products.filter(p => !p.isLocal).length} WEB</span>
                     </div>
