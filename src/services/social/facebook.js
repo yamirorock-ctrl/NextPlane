@@ -291,7 +291,7 @@ export const facebookService = {
     // For Instagram, we use the same endpoint but might need platform filter if unified inbox is desired.
     // However, usually fetching from Page ID with platform=instagram is the way for IG DMs.
     const platformParam = platform === "instagram" ? "&platform=instagram" : "";
-    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages{message,from,created_time}&access_token=${accessToken}${proofParam}${platformParam}`;
+    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages.limit(100){message,from,created_time}&limit=100&access_token=${accessToken}${proofParam}${platformParam}`;
 
     try {
       const res = await fetch(endpoint);
@@ -318,7 +318,7 @@ export const facebookService = {
           platform: platform,
           unread: conv.unread_count > 0,
           messages:
-            conv.messages?.data.reverse().map((m) => ({
+            conv.messages?.data?.reverse().map((m) => ({
               id: m.id,
               text: m.message,
               sender: m.from?.id === pageId ? "me" : "them",
