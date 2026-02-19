@@ -297,7 +297,7 @@ export const facebookService = {
 
     // Fetch conversations (DMs)
     const platformParam = platform === "instagram" ? "&platform=instagram" : "";
-    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages.limit(100){message,from,created_time}&limit=100&access_token=${accessToken}${proofParam}${platformParam}`;
+    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages.limit(100){id,message,from,created_time}&limit=100&access_token=${accessToken}${proofParam}${platformParam}`;
 
     try {
       const res = await fetch(endpoint);
@@ -311,8 +311,9 @@ export const facebookService = {
           participants.find((p) => p.id !== selfId) || participants[0];
 
         // Fallback for preview if snippet is missing
-        const lastMsg = conv.messages?.data?.[0]?.message || "";
-        const preview = conv.snippet || lastMsg || "(Sin mensaje de texto)";
+        const lastMsgObj = conv.messages?.data?.[0];
+        const preview =
+          conv.snippet || lastMsgObj?.message || "(Sin mensaje de texto)";
 
         return {
           id: conv.id,
@@ -332,7 +333,7 @@ export const facebookService = {
               id: m.id,
               text: m.message,
               sender: m.from?.id === selfId ? "me" : "them",
-              created_at: m.created_time,
+              created_at: m.created_time || conv.updated_time, // Use conversion time if message time is missing
             })) || [],
         };
       });

@@ -126,6 +126,10 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
           allConvos.forEach(conv => {
               if (conv.messages) {
                   conv.messages.forEach(msg => {
+                      // CRITICAL: Ensure we use the real creation date from Meta. 
+                      // Fallback to conversation updated_time, NOT current time.
+                      const messageDate = msg.created_at || conv.timestamp || new Date().toISOString();
+                      
                       newMessagesBatch.push({
                           platform: conv.platform,
                           external_id: msg.id,
@@ -134,7 +138,7 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
                           avatar_url: conv.avatar,
                           text: msg.text,
                           is_from_me: msg.sender === 'me',
-                          created_at: msg.created_at || new Date().toISOString(),
+                          created_at: messageDate, 
                           status: 'read'
                       });
                   });
