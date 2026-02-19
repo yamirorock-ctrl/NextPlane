@@ -315,7 +315,10 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
                 {/* Trend Chart */}
                 <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 h-[350px] relative overflow-hidden flex flex-col">
                    <div className="flex justify-between items-center mb-4 relative z-10 shrink-0">
-                      <h3 className="font-bold text-white flex items-center gap-2"><BarChart2 className="text-indigo-400"/> Actividad Reciente</h3>
+                      <h3 className="font-bold text-white flex items-center gap-2">
+                          <BarChart2 className="text-indigo-400"/> 
+                          Actividad Reciente <span className="text-xs text-slate-500 font-normal">(Comentarios por Hora)</span>
+                      </h3>
                       <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded font-bold">+12% hoy</span>
                    </div>
                    <div className="flex-1 w-full min-h-0 relative">
@@ -328,7 +331,7 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
                             contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
                             itemStyle={{ color: '#818cf8' }}
                          />
-                         <Bar dataKey="mentions" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                         <Bar dataKey="mentions" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={40} />
                        </BarChart>
                      </ResponsiveContainer>
                    </div>

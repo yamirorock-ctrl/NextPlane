@@ -15,14 +15,15 @@ import {
 const COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b'];
 
 // Mock Data
+// Mock Data (Placeholder only)
 const engagementData = [
-  { name: 'Lun', views: 4000, likes: 2400 },
-  { name: 'Mar', views: 3000, likes: 1398 },
-  { name: 'Mié', views: 2000, likes: 9800 },
-  { name: 'Jue', views: 2780, likes: 3908 },
-  { name: 'Vie', views: 1890, likes: 4800 },
-  { name: 'Sáb', views: 2390, likes: 3800 },
-  { name: 'Dom', views: 3490, likes: 4300 },
+  { name: 'Lun', views: 0, likes: 0 },
+  { name: 'Mar', views: 0, likes: 0 },
+  { name: 'Mié', views: 0, likes: 0 },
+  { name: 'Jue', views: 0, likes: 0 },
+  { name: 'Vie', views: 0, likes: 0 },
+  { name: 'Sáb', views: 0, likes: 0 },
+  { name: 'Dom', views: 0, likes: 0 },
 ];
 
 const platformData = [

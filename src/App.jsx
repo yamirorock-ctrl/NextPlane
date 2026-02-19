@@ -16,7 +16,7 @@ import CalendarView from './components/CalendarView';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ProductManager from './components/ProductManager';
 import SocialInbox from './components/SocialInbox';
-import BriefExport from './components/BriefExport';
+import GridPreview from './components/GridPreview';
 import SocialListening from './components/SocialListening';
 import BrandVoiceTrainer from './components/BrandVoiceTrainer';
 import VideoScriptPanel from './components/VideoScriptPanel';
@@ -68,28 +68,27 @@ import {
   RefreshCw,
   Loader2,
   Settings,
-  Key,
-  Upload,
-  Save,
-  Sliders,
-  Package,
+  Plus, 
+  Trash2, 
+  RefreshCcw, 
+  Settings as SettingsIcon,
+  TrendingDown,
   ChevronDown,
-  ChevronUp,
-  Heading,
+  Layout,
+  LogOut,
   ImagePlus,
   ChevronRight,
   ChevronLeft,
   Tag,
   Monitor,
   Apple,
-  Trash2,
   Pause,
   Volume2,
   VolumeX,
   Play,
   Clock,
-  DollarSign, // NEW
-  Edit2,       // NEW
+  DollarSign, 
+  Edit2,      
   Sun,
   Maximize,
   AlertCircle
@@ -170,6 +169,7 @@ const Sidebar = ({ activeTab, setActiveTab, mobileMenuOpen, setMobileMenuOpen, o
     { id: 'create', label: 'Estudio Viral', icon: <Zap size={20} className="text-amber-400" /> },
     { id: 'dashboard', label: 'Panel General', icon: <LayoutDashboard size={20} /> },
     { id: 'calendar', label: 'Calendario', icon: <Calendar size={20} className="text-amber-400" /> },
+    { id: 'grid', label: 'Previsualizar Grid', icon: <ImageIcon size={20} className="text-blue-400" /> },
     { id: 'inbox', label: 'Mensajes', icon: <MessageCircle size={20} className="text-indigo-400" /> },
     { id: 'listening', label: 'Listening', icon: <TrendingUp size={20} className="text-emerald-400" /> },
     { id: 'training', label: 'Entrenador', icon: <Sparkles size={20} className="text-violet-400" /> },
@@ -759,6 +759,15 @@ const AppContent = () => {
               setActiveTab('create');
           }}
         />}
+        {activeTab === 'grid' && (
+          <div className="max-w-[1200px] mx-auto p-6">
+            <GridPreview 
+                accessToken={metaPageAccessToken || metaAccessToken}
+                instagramId={metaInstagramId}
+                scheduledPosts={scheduledPosts}
+            />
+          </div>
+        )}
         {activeTab === 'inbox' && <SocialInbox 
             pageId={metaPageId} 
             accessToken={metaPageAccessToken || metaAccessToken} 
