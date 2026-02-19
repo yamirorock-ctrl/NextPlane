@@ -280,7 +280,7 @@ export const facebookService = {
   },
 
   // NEW: Fetch Conversations for Inbox
-  getConversations: async (pageId, accessToken) => {
+  getConversations: async (pageId, accessToken, platform = "facebook") => {
     if (!pageId || !accessToken) return [];
 
     const appSecret = localStorage.getItem("meta_app_secret");
@@ -288,36 +288,46 @@ export const facebookService = {
     const proofParam = proof ? `&appsecret_proof=${proof}` : "";
 
     // Fetch conversations (DMs)
-    // fields: senders, snippet, updated_time, unread_count
-    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages{message,from}&access_token=${accessToken}${proofParam}`;
+    // For Instagram, we use the same endpoint but might need platform filter if unified inbox is desired.
+    // However, usually fetching from Page ID with platform=instagram is the way for IG DMs.
+    const platformParam = platform === "instagram" ? "&platform=instagram" : "";
+    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages{message,from,created_time}&access_token=${accessToken}${proofParam}${platformParam}`;
 
     try {
       const res = await fetch(endpoint);
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
 
-      return data.data.map((conv) => ({
-        id: conv.id,
-        user: conv.participants?.data[0]?.name || "Usuario Desconocido",
-        avatar: `https://ui-avatars.com/api/?name=${conv.participants?.data[0]?.name}&background=random`, // Placeholder as FB doesn't give avatar right away without heavy permission
-        preview: conv.snippet,
-        time: new Date(conv.updated_time).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        platform: "facebook",
-        unread: conv.unread_count > 0,
-        messages:
-          conv.messages?.data.reverse().map((m) => ({
-            id: m.id,
-            text: m.message,
-            sender:
-              m.from?.name === conv.participants?.data[0]?.name ? "them" : "me",
-            time: "...", // Timestamp details require deeper fetch
-          })) || [],
-      }));
+      return data.data.map((conv) => {
+        // Find the other person (not the Page)
+        const otherPerson =
+          conv.participants?.data.find((p) => p.id !== pageId) ||
+          conv.participants?.data[0];
+
+        return {
+          id: conv.id,
+          sender_id: otherPerson?.id,
+          user: otherPerson?.name || "Usuario Desconocido",
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(otherPerson?.name || "U")}&background=random`,
+          preview: conv.snippet,
+          time: new Date(conv.updated_time).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          timestamp: conv.updated_time,
+          platform: platform,
+          unread: conv.unread_count > 0,
+          messages:
+            conv.messages?.data.reverse().map((m) => ({
+              id: m.id,
+              text: m.message,
+              sender: m.from?.id === pageId ? "me" : "them",
+              created_at: m.created_time,
+            })) || [],
+        };
+      });
     } catch (e) {
-      console.error("Error fetching inbox:", e);
+      console.error(`Error fetching ${platform} inbox:`, e);
       throw e;
     }
   },

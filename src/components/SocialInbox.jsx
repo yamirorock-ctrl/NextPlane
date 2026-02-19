@@ -12,10 +12,12 @@ import {
   Clock,
   CheckCircle2,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { facebookService } from '../services/social/facebook';
+import { instagramService } from '../services/social/instagram';
 
 // Helper for Relative Time
 const timeAgo = (dateStr) => {
@@ -83,54 +85,88 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
   const selectedConversation = conversations.find(c => c.id === selectedSenderId);
 
   // 1. Fetch Initial Data & Sync
-  useEffect(() => {
+  const fetchMessages = async () => {
     setLoading(true);
-    const fetchMessages = async () => {
-        const { data, error } = await supabase
-            .from('inbox_messages')
-            .select('*')
-            .order('created_at', { ascending: true }); // Get all for timeline
-        
-        if(error) console.error("Error fetching inbox:", error);
-        
-        let loadedMessages = data || [];
+    const { data, error } = await supabase
+        .from('inbox_messages')
+        .select('*')
+        .order('created_at', { ascending: true }); // Get all for timeline
+    
+    if(error) console.error("Error fetching inbox:", error);
+    
+    let loadedMessages = data || [];
 
-        // SYNC: If local DB is empty, try fetching from Facebook
-        if (loadedMessages.length === 0 && pageId && accessToken) {
-            try {
-                console.log("Inbox empty. Syncing history from Facebook...");
-                const fbConvos = await facebookService.getConversations(pageId, accessToken);
-                
-                const historyAuthored = [];
-                fbConvos.forEach(conv => {
-                    if (conv.messages) {
-                        conv.messages.forEach(msg => {
-                            historyAuthored.push({
-                                id: msg.id,
-                                sender_id: conv.id,
-                                sender_name: conv.user,
-                                avatar_url: conv.avatar,
-                                platform: conv.platform,
-                                text: msg.text,
-                                is_from_me: msg.sender === 'me',
-                                created_at: new Date().toISOString(), // Fallback time
-                                status: 'read'
-                            });
-                        });
-                    }
-                });
-                
-                if (historyAuthored.length > 0) {
-                     loadedMessages = historyAuthored;
-                }
-            } catch (err) {
-                console.warn("Could not sync Facebook history:", err);
-            }
-        }
-        
-        setMessages(loadedMessages);
-        setLoading(false);
-    };
+    // SYNC: If local DB is empty, try fetching from Facebook & Instagram
+    if (loadedMessages.length === 0 && pageId && accessToken) {
+        handleSync(false); // Silent sync on first load
+    }
+    
+    setMessages(loadedMessages);
+    setLoading(false);
+  };
+
+  const handleSync = async (showAlerts = true) => {
+      if(!pageId || !accessToken) return showAlerts && alert("Primero conecta Facebook.");
+      setLoading(true);
+      
+      try {
+          console.log("🔄 Iniciando sincronización de historial...");
+          
+          // Fetch from both platforms in parallel
+          const [fbConvos, igConvos] = await Promise.all([
+              facebookService.getConversations(pageId, accessToken, 'facebook'),
+              instagramService.getInstagramAccount(accessToken, pageId)
+                  .then(igId => igId ? facebookService.getConversations(pageId, accessToken, 'instagram') : [])
+                  .catch(() => []) 
+          ]);
+
+          const allConvos = [...fbConvos, ...igConvos];
+          const newMessagesBatch = [];
+
+          allConvos.forEach(conv => {
+              if (conv.messages) {
+                  conv.messages.forEach(msg => {
+                      newMessagesBatch.push({
+                          platform: conv.platform,
+                          external_id: msg.id,
+                          sender_id: conv.sender_id || conv.id,
+                          sender_name: conv.user,
+                          avatar_url: conv.avatar,
+                          text: msg.text,
+                          is_from_me: msg.sender === 'me',
+                          created_at: msg.created_at || new Date().toISOString(),
+                          status: 'read'
+                      });
+                  });
+              }
+          });
+
+          if (newMessagesBatch.length > 0) {
+              console.log(`📥 Guardando ${newMessagesBatch.length} mensajes en la base de datos...`);
+              
+              // Use UPSERT by external_id to avoid duplicates if table supports it,
+              // or just filter out existing messages by ID.
+              // We'll filter locally against 'messages' state just in case.
+              const existingIds = new Set(messages.map(m => m.external_id));
+              const uniqueNew = newMessagesBatch.filter(m => !existingIds.has(m.external_id));
+
+              if (uniqueNew.length > 0) {
+                  const { error } = await supabase.from('inbox_messages').upsert(uniqueNew, { onConflict: 'external_id' });
+                  if(error) console.error("Error upserting:", error);
+              }
+          }
+          
+          if(showAlerts) alert(`✅ Sincronización completa. Se procesaron ${allConvos.length} conversaciones.`);
+          fetchMessages(); // Refresh UI
+      } catch (err) {
+          console.error("Sync Error:", err);
+          if(showAlerts) alert("⚠️ Error sincronizando: " + err.message);
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  useEffect(() => {
     fetchMessages();
 
     // 2. Realtime Subscription
@@ -138,18 +174,24 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
         .channel('inbox_realtime')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'inbox_messages' }, payload => {
             console.log("New Message!", payload.new);
-            setMessages(prev => [...prev, payload.new]);
-            // Optional: Play Sound
+            setMessages(prev => {
+                // Prevent duplicate from realtime if we just inserted it
+                if(prev.some(m => m.id === payload.new.id)) return prev;
+                return [...prev, payload.new];
+            });
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'inbox_messages' }, payload => {
              setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m));
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'inbox_messages' }, payload => {
+             setMessages(prev => prev.filter(m => m.id !== payload.old.id));
         })
         .subscribe();
 
     return () => {
         supabase.removeChannel(channel);
     };
-  }, [pageId, accessToken]);
+  }, [pageId, accessToken, instagramId]);
 
   // 3. Client-Side Profile Fetching (Repair unknown names)
   useEffect(() => {
@@ -313,6 +355,15 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
                </h2>
                
                <div className="flex items-center gap-4">
+                 {/* Sync Button */}
+                 <button 
+                    onClick={() => handleSync(true)}
+                    className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-indigo-400 transition-all border border-transparent hover:border-slate-700"
+                    title="Sincronizar Historial"
+                 >
+                    <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                 </button>
+                 
                  {/* Auto Mode Toggle */}
                  <button 
                     onClick={() => {
