@@ -316,4 +316,20 @@ export const instagramService = {
       throw e;
     }
   },
+
+  // 8. Get Recent Media for Grid Preview
+  getRecentMedia: async (accessToken, igUserId, limit = 18) => {
+    try {
+      const fields =
+        "id,media_type,media_url,thumbnail_url,permalink,caption,timestamp";
+      const url = `https://graph.facebook.com/v19.0/${igUserId}/media?fields=${fields}&limit=${limit}&access_token=${accessToken}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.error) throw data.error;
+      return data.data || [];
+    } catch (e) {
+      console.error("Error getting IG Media:", e);
+      return [];
+    }
+  },
 };
