@@ -332,7 +332,7 @@ const AppContent = () => {
   const [scheduledPosts, setScheduledPosts] = useState([]);
   const [isScheduling, setIsScheduling] = useState(false);
   
-  const { settings, updateSettings, signOut, user } = useAuth(); 
+  const { settings, updateSettings, signOut, user, loading: settingsLoading } = useAuth(); 
 
   // GLOBAL STATE (Lifted from CreateStudio)
   const [products, setProducts] = useState([]);
