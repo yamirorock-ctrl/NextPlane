@@ -150,9 +150,10 @@ const CreateStudio = (props) => {
                                </div>
                             </div>
                             
-                            <div className="flex-1 overflow-y-auto custom-scrollbar grid grid-cols-2 gap-3 pr-2">
+                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 relative">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pb-4">
                                 {products.filter(p => showCatalog ? !p.isLocal : p.isLocal).length === 0 ? (
-                                    <div className="col-span-2 flex flex-col items-center justify-center opacity-50">
+                                    <div className="col-span-full flex flex-col items-center justify-center opacity-50 py-10">
                                         <Package size={32} className="mb-2"/>
                                         <p className="text-xs">Sin productos aquí</p>
                                     </div>
@@ -161,21 +162,31 @@ const CreateStudio = (props) => {
                                         <button 
                                             key={prod.id} 
                                             onClick={() => setSelectedProduct(prod)}
-                                            className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all group ${selectedProduct?.id === prod.id ? 'border-indigo-500 ring-2 ring-indigo-500/50' : 'border-transparent hover:border-slate-600'}`}
+                                            className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all group shrink-0 ${selectedProduct?.id === prod.id ? 'border-indigo-500 ring-4 ring-indigo-500/30 z-10 scale-105' : 'border-slate-800 hover:border-slate-500 hover:scale-[1.02]'}`}
                                         >
-                                            <MediaPreview src={prod.image_url} className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3 text-left">
-                                                <p className="font-bold text-white text-xs truncate">{prod.name}</p>
-                                                <p className="text-[10px] text-emerald-400 font-mono">${prod.price}</p>
+                                            <div className="w-full h-full bg-slate-900">
+                                                <MediaPreview src={prod.image_url} className="w-full h-full object-cover" />
                                             </div>
+                                            
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-3 text-left">
+                                                <p className="font-bold text-white text-xs truncate drop-shadow-md">{prod.name}</p>
+                                                <div className="flex justify-between items-center mt-1">
+                                                    <p className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-900/50 px-1.5 rounded">${prod.price}</p>
+                                                    {prod.stock !== undefined && (
+                                                        <span className="text-[9px] text-slate-300 bg-slate-800/80 px-1.5 rounded">x{prod.stock}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            
                                             {selectedProduct?.id === prod.id && (
-                                                <div className="absolute top-2 right-2 bg-indigo-500 text-white p-1 rounded-full shadow-lg animate-bounce">
-                                                    <CheckCircle2 size={16} />
+                                                <div className="absolute top-2 right-2 bg-indigo-600 text-white p-1.5 rounded-full shadow-lg animate-in zoom-in spin-in-90 duration-300">
+                                                    <CheckCircle2 size={14} strokeWidth={3} />
                                                 </div>
                                             )}
                                         </button>
                                     ))
                                 )}
+                                </div>
                             </div>
                         </div>
                     </div>
