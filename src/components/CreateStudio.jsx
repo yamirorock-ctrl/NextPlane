@@ -9,10 +9,11 @@ import HashtagGenerator from './HashtagGenerator';
 import PreviewPhone from './PreviewPhone';
 import MediaPreview from './MediaPreview'; 
 import VoiceoverPanel from './VoiceoverPanel'; 
+import BrandVoiceManager from './BrandVoiceManager'; 
 import { 
   LayoutDashboard, Upload, Loader2, ImagePlus, Package, CheckCircle2, Trash2, ShoppingBag, 
   RefreshCw, ChevronUp, ChevronDown, Edit2, Sparkles, Tag, DollarSign, Save, X, Music, 
-  Link, Video, ImageIcon, Zap, Clock, Download, Smartphone, Sliders, Calendar, ArrowRight, ArrowLeft, Volume2, VolumeX 
+  Link, Video, ImageIcon, Zap, Clock, Download, Smartphone, Sliders, Calendar, ArrowRight, ArrowLeft, Volume2, VolumeX, User 
 } from 'lucide-react';
 
 const STEPS = [
@@ -64,8 +65,20 @@ const CreateStudio = (props) => {
       return true;
   };
 
+
+
+  const [showBrandManager, setShowBrandManager] = useState(false);
+
   return (
     <div className="h-full flex flex-col relative overflow-hidden">
+      <BrandVoiceManager 
+        isOpen={showBrandManager} 
+        onClose={() => setShowBrandManager(false)}
+        onSelectPreset={(preset) => {
+            setSelectedTone(preset.name);
+            setCustomInstructions(prev => prev ? prev + "\n" + preset.instructions : preset.instructions);
+        }}
+      />
       {showPageSelector && (
         <PageSelector pages={pages} onSelect={handlePageSelect} onClose={() => setShowPageSelector(false)} />
       )}
@@ -210,8 +223,31 @@ const CreateStudio = (props) => {
                         </div>
                         
                         {/* Prompt / Instructions */}
-                        <div className="glass-panel p-6 rounded-3xl space-y-4">
-                            <h3 className="font-bold text-white flex items-center gap-2"><Sparkles className="text-amber-400" size={18}/> Dirección Creativa</h3>
+                        <div className="glass-panel p-6 rounded-3xl space-y-4 relative group">
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-bold text-white flex items-center gap-2">
+                                    <Sparkles className="text-amber-400" size={18}/> Dirección Creativa
+                                </h3>
+                                <button 
+                                    onClick={() => setShowBrandManager(true)}
+                                    className="text-xs font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 flex items-center gap-1 transition-all hover:bg-indigo-500/20"
+                                >
+                                    <User size={12} /> Mis Voces
+                                </button>
+                            </div>
+                            
+                            {/* Selected Persona Indicator */}
+                            {selectedTone && !['Profesional', 'Divertido', 'Urgente', 'Inspirador'].includes(selectedTone) && (
+                                <div className="bg-indigo-600/20 border border-indigo-500/50 p-2 rounded-lg flex items-center gap-2 mb-2 animate-in fade-in slide-in-from-top-2">
+                                    <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center">
+                                        <Sparkles size={12} className="text-white" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-xs text-indigo-200 font-bold">Usando: {selectedTone}</p>
+                                    </div>
+                                    <button onClick={() => setSelectedTone('Profesional')} className="text-indigo-400 hover:text-white"><X size={14}/></button>
+                                </div>
+                            )}
                             
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase">Instrucciones Especiales</label>
