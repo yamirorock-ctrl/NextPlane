@@ -80,7 +80,9 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
       mentions.forEach(m => {
           if(!m.timestamp) return;
           const date = new Date(m.timestamp);
-          const hourKey = date.toLocaleTimeString([], {hour: '2-digit', minute:'00'}); // Group by hour
+          // Group by hour
+          const h = date.getHours().toString().padStart(2, '0');
+          const hourKey = `${h}:00`;
           hours[hourKey] = (hours[hourKey] || 0) + 1;
       });
 

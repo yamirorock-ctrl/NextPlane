@@ -99,8 +99,8 @@ import {
 // MOCK_PRODUCTS removed in favor of Supabase fetching
 
 const DEFAULT_HOOKS = [
-  "ðŸ›‘ Â¡Deja de hacer scroll! Tienes que ver esto.",
-  "ðŸ¤« El secreto que las tiendas no quieren que sepas...",
+  "🛑 ¡Deja de hacer scroll! Tienes que ver esto.",
+  "🤫 El secreto que las tiendas no quieren que sepas...",
   "Pov: Encontraste el regalo perfecto por menos de $50."
 ];
 
@@ -115,7 +115,7 @@ const SuccessModal = ({ onClose, platform }) => (
       <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 ring-1 ring-emerald-500/30">
         <Rocket size={40} className="text-emerald-400 animate-bounce" />
       </div>
-      <h3 className="text-2xl font-bold text-white mb-2">Â¡Lanzamiento Exitoso!</h3>
+      <h3 className="text-2xl font-bold text-white mb-2">¡Lanzamiento Exitoso!</h3>
       <p className="text-slate-400 mb-6 font-light">
         Tu contenido ha sido programado en <span className="font-bold capitalize text-indigo-400">{platform}</span>. El algoritmo va a amarlo.
       </p>
@@ -139,7 +139,7 @@ const DownloadModal = ({ onClose }) => (
         <Smartphone size={32} className="text-indigo-400" />
       </div>
       <h3 className="text-2xl font-bold text-white mb-2">Lleva Next Plane contigo</h3>
-      <p className="text-slate-400 mb-6 font-light">Escanea para descargar la App de gestiÃ³n en iOS y Android.</p>
+      <p className="text-slate-400 mb-6 font-light">Escanea para descargar la App de gestión en iOS y Android.</p>
       
       <div className="bg-white p-4 rounded-xl inline-block mb-6 shadow-lg">
         {/* Fake QR Code Pattern */}
@@ -172,9 +172,9 @@ const Sidebar = ({ activeTab, setActiveTab, mobileMenuOpen, setMobileMenuOpen, o
     { id: 'inbox', label: 'Mensajes', icon: <MessageCircle size={20} className="text-indigo-400" /> },
     { id: 'listening', label: 'Listening', icon: <TrendingUp size={20} className="text-emerald-400" /> },
     { id: 'training', label: 'Entrenador', icon: <Sparkles size={20} className="text-violet-400" /> },
-    { id: 'analytics', label: 'AnalÃ­tica', icon: <BarChart3 size={20} className="text-pink-400" /> },
+    { id: 'analytics', label: 'Analítica', icon: <BarChart3 size={20} className="text-pink-400" /> },
     { id: 'products', label: 'Productos', icon: <ShoppingBag size={20} /> },
-    { id: 'settings', label: 'ConfiguraciÃ³n', icon: <Settings size={20} className="text-slate-400" /> },
+    { id: 'settings', label: 'Configuración', icon: <Settings size={20} className="text-slate-400" /> },
   ];
 
   return (
@@ -269,8 +269,8 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="p-8 bg-slate-950 text-white h-screen overflow-auto">
-          <h1 className="text-2xl font-bold text-red-500 mb-4">Algo saliÃ³ mal ðŸ˜”</h1>
-          <p className="mb-2">Por favor, envÃ­a una captura de esto al soporte:</p>
+          <h1 className="text-2xl font-bold text-red-500 mb-4">Algo salió mal 😔</h1>
+          <p className="mb-2">Por favor, envía una captura de esto al soporte:</p>
           <pre className="bg-slate-900 p-4 rounded text-xs font-mono border border-red-900/50">
             {this.state.error && this.state.error.toString()}
             <br />
@@ -394,7 +394,7 @@ const AppContent = () => {
         const shortToken = params.get("access_token");
         
         if (shortToken) {
-            console.log("ðŸ”— Token detectado en URL. Iniciando canje automÃ¡tico...");
+            console.log("🔗 Token detectado en URL. Iniciando canje automático...");
             
             // 2. Get Credentials (Try State -> Settings -> LocalStorage)
             const appId = metaAppId || settings?.meta_app_id || localStorage.getItem("meta_app_id");
@@ -404,12 +404,12 @@ const AppContent = () => {
                 // 3. Exchange
                 facebookService.exchangeForLongLivedToken(shortToken, appId, appSecret)
                     .then(longToken => {
-                        console.log("âœ… Token canjeado automÃ¡ticamente:", longToken.substring(0, 10) + "...");
+                        console.log("✅ Token canjeado automáticamente:", longToken.substring(0, 10) + "...");
                         
                         // 4. Save & Update State
                         setMetaAccessToken(longToken);
                         saveField('meta_access_token', longToken);
-                        alert("âœ… Â¡ConexiÃ³n con Facebook Exitosa! Token guardado.");
+                        alert("✅ ¡Conexión con Facebook Exitosa! Token guardado.");
                         
                         // 5. Clear URL to prevent re-runs
                         window.history.replaceState(null, null, ' ');
@@ -417,10 +417,10 @@ const AppContent = () => {
                     })
                     .catch(err => {
                         console.error("Auto-Exchange Error:", err);
-                        alert("âš ï¸ Error canjeando token automÃ¡ticamente: " + err.message);
+                        alert("⚠️ Error canjeando token automáticamente: " + err.message);
                     });
             } else {
-                console.warn("âš ï¸ Token detectado pero faltan App ID/Secret. Se requiere intervenciÃ³n manual.");
+                console.warn("⚠️ Token detectado pero faltan App ID/Secret. Se requiere intervención manual.");
                 setIsAuthRedirect(true); 
             }
         }
@@ -543,7 +543,7 @@ const AppContent = () => {
   };
 
   const handleSoftDelete = async (post) => {
-    if(!confirm("Â¿Mover a la papelera?")) return;
+    if(!confirm("¿Mover a la papelera?")) return;
     try {
         const { error } = await supabase
             .from('posts')
@@ -567,14 +567,14 @@ const AppContent = () => {
 
         if(error) throw error;
         setScheduledPosts(prev => prev.map(p => p.id === post.id ? { ...p, deleted_at: null } : p));
-        alert("â™»ï¸ Post restaurado");
+        alert("♻️ Post restaurado");
     } catch(e) {
         alert("Error restaurando: " + e.message);
     }
   };
 
   const handleEmptyTrash = async () => {
-    if(!confirm("Â¿Vaciar papelera permanentemente? Esta acciÃ³n es irreversible.")) return;
+    if(!confirm("¿Vaciar papelera permanentemente? Esta acción es irreversible.")) return;
     try {
         // Delete items where deleted_at is NOT null
         const { error } = await supabase
@@ -586,7 +586,7 @@ const AppContent = () => {
         
         // Clear locally
         setScheduledPosts(prev => prev.filter(p => !p.deleted_at));
-        alert("ðŸ—‘ï¸ Papelera vaciada");
+        alert("🗑️ Papelera vaciada");
     } catch(e) {
         alert("Error vaciando papelera: " + e.message);
     }
@@ -616,7 +616,7 @@ const AppContent = () => {
       setActiveTab('create'); // 'create' is the correct key for Studio in AppContent
       
       // 4. Notify User (Optional toast/alert)
-      alert("âœ¨ Post cargado en el Estudio. Puedes editarlo o lanzarlo de nuevo.");
+      alert("✨ Post cargado en el Estudio. Puedes editarlo o lanzarlo de nuevo.");
   };
 
   const handleProductRelaunch = (product) => {
@@ -625,7 +625,7 @@ const AppContent = () => {
       setGeneratedHashtags('');
       setActiveTab('create');
       // Optional feedback
-      // alert(`âœ¨ Producto "${product.name}" cargado en el Estudio.`); 
+      // alert(` Producto "${product.name}" cargado en el Estudio.`); 
   };
 
   if (isAuthRedirect) {
@@ -634,15 +634,15 @@ const AppContent = () => {
            <div className="w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mb-6 border border-emerald-500/20 shadow-2xl shadow-emerald-500/20">
               <CheckCircle2 size={48} className="text-emerald-400" />
            </div>
-           <h1 className="text-4xl font-bold mb-4">Â¡ConexiÃ³n Exitosa!</h1>
+           <h1 className="text-4xl font-bold mb-4">¡Conexión Exitosa!</h1>
            <p className="text-slate-400 text-lg max-w-md mb-8">
-              Facebook te ha autorizado. Ahora necesitamos llevar este permiso a la aplicaciÃ³n principal.
+              Facebook te ha autorizado. Ahora necesitamos llevar este permiso a la aplicación principal.
            </p>
            
            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg mb-8 shadow-xl">
-              <p className="text-xs font-bold text-indigo-400 uppercase mb-2 tracking-wider">Paso Ãšnico:</p>
+              <p className="text-xs font-bold text-indigo-400 uppercase mb-2 tracking-wider">Paso Único:</p>
               <p className="text-white font-medium mb-4">
-                 Copia la direcciÃ³n web que ves arriba (la URL) y pÃ©gala en la configuraciÃ³n de la App.
+                 Copia la dirección web que ves arriba (la URL) y pégala en la configuración de la App.
               </p>
               <div className="flex gap-2">
                  <input 
@@ -653,7 +653,7 @@ const AppContent = () => {
                  <button 
                    onClick={() => {
                       navigator.clipboard.writeText(window.location.href);
-                      alert("Â¡Copiado! Ahora vuelve a la otra ventana.");
+                      alert("¡Copiado! Ahora vuelve a la otra ventana.");
                    }}
                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-xs"
                  >
@@ -663,7 +663,7 @@ const AppContent = () => {
            </div>
 
            <p className="text-xs text-slate-600">
-              Ya puedes cerrar esta ventana despuÃ©s de copiar.
+              Ya puedes cerrar esta ventana despuí©s de copiar.
            </p>
         </div>
      );
@@ -769,8 +769,8 @@ const AppContent = () => {
                 <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center">
                   <LayoutDashboard size={40} className="text-slate-600" />
                 </div>
-                <h2 className="text-3xl font-bold text-slate-700">PrÃ³ximamente</h2>
-                <p className="text-slate-500">Estamos cocinando algo especial para la secciÃ³n {activeTab}.</p>
+                <h2 className="text-3xl font-bold text-slate-700">Próximamente</h2>
+                <p className="text-slate-500">Estamos cocinando algo especial para la sección {activeTab}.</p>
               </div>
             )}
           </div>
