@@ -4,15 +4,54 @@ import {
 } from 'lucide-react';
 import MediaPreview from './MediaPreview';
 
-const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, onSlideChange }) => {
+const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, onSlideChange, subtitles = [] }) => {
   const isVideoMode = contentType === 'video';
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
   const [isMuted, setIsMuted] = useState(false); 
+  const [currentSubtitle, setCurrentSubtitle] = useState("");
   
   // Audio Refs
   const bgAudioRef = useRef(null);
   const voiceAudioRef = useRef(null);
+  const progressInterval = useRef(null);
+
+  // --- SUBTITLE SYNC ---
+  useEffect(() => {
+     if (!isAutoPlay || isMuted || (!audio && !voiceover)) {
+         setCurrentSubtitle("");
+         if (progressInterval.current) clearInterval(progressInterval.current);
+         return;
+     }
+
+     const checkTime = () => {
+         let time = 0;
+         // Prefer voice time, fallback to BG music time
+         if (voiceAudioRef.current && !voiceAudioRef.current.paused) {
+             time = voiceAudioRef.current.currentTime;
+         } else if (bgAudioRef.current && !bgAudioRef.current.paused) {
+             time = bgAudioRef.current.currentTime;
+         } else if (window.speechSynthesis.speaking) {
+             // TTS time estimation is hard, let's skip for now or use a global timer
+             // For MVP, subtitles work best with Audio Files.
+             // If TTS, we might just show first few lines or rotate them?
+             // Let's rely on the fact that SubtitleEditor provides timed segments.
+             // If TTS, we don't have a precise time source easily accessible.
+             // Fallback: If TTS is active, perhaps we can use a simpler mechanic or just show the text static.
+         }
+
+         if (subtitles.length > 0) {
+             const active = subtitles.find(s => time >= s.start && time < s.end);
+             setCurrentSubtitle(active ? active.text : "");
+         } else {
+             // Fallback to "karaoke" style if no explicit subtitles but content exists
+             setCurrentSubtitle(content?.slice(0, 100) || "");
+         }
+     };
+
+     progressInterval.current = setInterval(checkTime, 100);
+     return () => clearInterval(progressInterval.current);
+  }, [isAutoPlay, isMuted, subtitles, audio, voiceover]);
 
   // --- BACKGROUND MUSIC & DUCKING LOGIC ---
   useEffect(() => {
@@ -51,8 +90,6 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
 
       // CORE PLAYBACK & DUCKING
       if (bgEl) {
-          // Ducking: If voiceover exists (Text or File), lower volume
-          // If voiceover is playing, duck more aggresively
           const hasVoice = !!voiceover; 
           bgEl.volume = isMuted ? 0 : (hasVoice ? 0.15 : 0.8);
 
@@ -65,12 +102,11 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
 
       if (voiceEl) {
           voiceEl.volume = isMuted ? 0 : 1.0;
-          // Apply playback rate if available in config (Future feature: Speed control for recorded audio)
           if (voiceover.rate) voiceEl.playbackRate = voiceover.rate;
 
           if (isAutoPlay && !isMuted) {
               if (voiceEl.paused) {
-                  voiceEl.currentTime = 0; // Restart regarding loop or slide? Let's just play.
+                  voiceEl.currentTime = 0; 
                   voiceEl.play().catch(e => console.log("Voice Autoplay blocked", e));
               }
           } else {
@@ -89,13 +125,11 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
 
   // --- TTS LOGIC (Text to Speech) ---
   useEffect(() => {
-    // Only run if type is TTS
     if (voiceover?.type !== 'tts') {
         window.speechSynthesis.cancel();
         return;
     }
 
-    // IMMEDIATE STOP
     if (isMuted || !isAutoPlay) {
         window.speechSynthesis.cancel();
         return;
@@ -146,7 +180,7 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
     if (slides.length <= 1 || !isAutoPlay) return;
     const interval = setInterval(() => {
       setCurrentSlide(curr => (curr + 1) % slides.length);
-    }, 3500); // Slower slides
+    }, 3500); 
     return () => clearInterval(interval);
   }, [slides, isAutoPlay]);
   
@@ -204,12 +238,13 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                     </div>
                 )}
                 
-                {/* Simulated Subtitles (Karaoke-ish) */}
-                {voiceover && !isMuted && isAutoPlay && (
-                    <div className="absolute bottom-32 left-0 w-full px-6 pointer-events-none z-20">
-                        <div className="bg-black/40 backdrop-blur-sm p-3 rounded-xl text-center">
-                             <p className="text-white font-bold text-sm leading-snug drop-shadow-md animate-fade-in">
-                                 {content?.slice(0, 80) || "Escuchando..."}...
+                {/* SUBTITLES / CAPTION OVERLAY */}
+                {/* Only show if playing and not muted */}
+                {!isMuted && isAutoPlay && (
+                    <div className="absolute bottom-32 left-0 w-full px-6 pointer-events-none z-20 flex justify-center">
+                        <div className="bg-black/40 backdrop-blur-sm p-3 rounded-xl text-center max-w-[90%] transition-all duration-300">
+                             <p className="text-white font-bold text-sm leading-snug drop-shadow-md animate-fade-in-up">
+                                 {currentSubtitle || (subtitles.length > 0 ? "..." : (content?.slice(0, 80) + "..."))}
                              </p>
                         </div>
                     </div>

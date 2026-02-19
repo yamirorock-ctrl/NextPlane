@@ -10,6 +10,7 @@ import PreviewPhone from './PreviewPhone';
 import MediaPreview from './MediaPreview'; 
 import VoiceoverPanel from './VoiceoverPanel'; 
 import BrandVoiceManager from './BrandVoiceManager'; 
+import SubtitleEditor from './SubtitleEditor'; 
 import { 
   LayoutDashboard, Upload, Loader2, ImagePlus, Package, CheckCircle2, Trash2, ShoppingBag, 
   RefreshCw, ChevronUp, ChevronDown, Edit2, Sparkles, Tag, DollarSign, Save, X, Music, 
@@ -38,7 +39,9 @@ const CreateStudio = (props) => {
       audio, setAudio, selectedTone, setSelectedTone, customInstructions, setCustomInstructions,
       trendingAudio, setTrendingAudio, hooksList, setHooksList, loadingHooks, setLoadingHooks,
       loadingCaption, setLoadingCaption, loadingTags, setLoadingTags, pages, setPages,
-      showPageSelector, setShowPageSelector, savedPresets, setSavedPresets
+      showPageSelector, setShowPageSelector, savedPresets, setSavedPresets,
+    subtitles,
+    setSubtitles,
   } = state;
 
   // Destructure actions
@@ -312,6 +315,15 @@ const CreateStudio = (props) => {
                                 onAudioGenerated={(config) => actions.setVoiceoverConfig(config)} 
                             />
 
+                            {/* Subtitle Editor - Appears when voiceover is configured */}
+                            {voiceoverConfig && (
+                                <SubtitleEditor 
+                                    initialText={caption}
+                                    audioDuration={voiceoverConfig?.duration || (voiceoverConfig.text ? voiceoverConfig.text.length / 15 : 10)} 
+                                    onSubtitlesChange={setSubtitles}
+                                />
+                            )}
+
                             {/* 2. Safe Music Selection */}
                             <div className="glass-panel p-4 rounded-2xl border border-indigo-500/20">
                                 <div className="flex items-center justify-between mb-4">
@@ -442,7 +454,8 @@ const CreateStudio = (props) => {
                                 content={caption} 
                                 product={selectedProduct} 
                                 audio={customAudioUrl} 
-                                voiceover={state.voiceoverConfig}
+                                voiceover={voiceoverConfig}
+                                subtitles={subtitles} 
                                 hooks={hook} 
                             />
                          </div>

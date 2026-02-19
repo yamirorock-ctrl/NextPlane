@@ -51,6 +51,7 @@ export const useCreateStudio = ({
   const [audioStartTime, setAudioStartTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [voiceoverConfig, setVoiceoverConfig] = useState(null); // New Voiceover State
+  const [subtitles, setSubtitles] = useState([]); // Array of subtitle segments {id, text, start, end}
 
   const [syncing, setSyncing] = useState(false);
   const [editingImage, setEditingImage] = useState(null); // URL of image to edit
@@ -910,6 +911,8 @@ export const useCreateStudio = ({
       setLoadingCaption,
       loadingTags,
       setLoadingTags,
+      subtitles,
+      setSubtitles,
       pages,
       setPages,
       showPageSelector,
