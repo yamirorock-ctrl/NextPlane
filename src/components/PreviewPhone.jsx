@@ -4,11 +4,88 @@ import {
 } from 'lucide-react';
 import MediaPreview from './MediaPreview';
 
-const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChange }) => {
+const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, onSlideChange }) => {
   const isVideoMode = contentType === 'video';
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false); // Default unmuted for better UX? Or muted for autoplay policy. Let's start muted but allow unmute.
+  
+  // Audio Refs
+  const audioRef = React.useRef(null);
+
+  // Handle Background Audio (Music)
+  useEffect(() => {
+      if (!audio) {
+          if (audioRef.current) {
+              audioRef.current.pause();
+              audioRef.current = null;
+          }
+          return;
+      }
+
+      if (!audioRef.current) {
+          audioRef.current = new Audio(audio);
+          audioRef.current.loop = true;
+      } else if (audioRef.current.src !== audio) {
+          audioRef.current.src = audio;
+      }
+
+      const audioEl = audioRef.current;
+      
+      // Volume Ducking logic
+      if (voiceover) {
+          audioEl.volume = isMuted ? 0 : 0.2; // Lower volume if voiceover exists
+      } else {
+          audioEl.volume = isMuted ? 0 : 0.8;
+      }
+
+      if (isAutoPlay && !isMuted) {
+          console.log("Attempting bg audio play");
+          audioEl.play().catch(e => console.log("Autoplay blocked", e));
+      } else {
+          audioEl.pause();
+      }
+
+      return () => {
+          if(!isAutoPlay || isMuted) audioEl.pause();
+      };
+  }, [audio, isMuted, isAutoPlay, voiceover]);
+
+
+  // Handle Voiceover (TTS)
+  useEffect(() => {
+    // Cancel any ongoing speech when component unmounts or deps change
+    return () => window.speechSynthesis.cancel();
+  }, []);
+
+  useEffect(() => {
+    if (!voiceover || isMuted || !isAutoPlay) {
+        window.speechSynthesis.cancel();
+        return;
+    }
+
+    // Small delay to let music start first
+    const timer = setTimeout(() => {
+        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(voiceover.text);
+        
+        // Try to find the exact voice again
+        const voices = window.speechSynthesis.getVoices();
+        const voice = voices.find(v => v.voiceURI === voiceover.voiceURI) || voices.find(v => v.lang === voiceover.lang);
+        if (voice) utterance.voice = voice;
+        
+        utterance.rate = voiceover.rate || 1;
+        utterance.pitch = voiceover.pitch || 1;
+        utterance.volume = 1; // Max volume for voice
+
+        window.speechSynthesis.speak(utterance);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [voiceover, isMuted, isAutoPlay, currentSlide]); // Restart on slide change? Maybe not. Let's remove currentSlide if we want it continuous.
+  // Actually, for a single ad, we want it to run once per loop usually, or just once.
+  // Re-adding it to deps ONLY if we want it to restart. For now, let's keep it simple: plays when Voiceover changes or un-mutes.
 
   // Normalize slides
   const slides = useMemo(() => {
@@ -52,6 +129,14 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
             <div className="w-1 h-1 rounded-full bg-indigo-900/50"></div>
          </div>
       </div>
+
+      {/* Mute Toggle Overlay (Visible on hover or tap) */}
+      <button 
+        onClick={() => setIsMuted(prev => !prev)}
+        className="absolute top-4 right-4 z-40 w-8 h-8 flex items-center justify-center bg-black/40 backdrop-blur-md rounded-full text-white/80 hover:bg-black/60 transition-colors"
+      >
+        {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+      </button>
 
       {/* Main Screen Content */}
       <div className={`w-full h-full relative ${isVideoMode ? 'bg-black' : 'bg-white'} flex flex-col`}>

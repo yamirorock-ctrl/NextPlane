@@ -50,6 +50,7 @@ export const useCreateStudio = ({
   const [audioType, setAudioType] = useState("file"); // 'file' | 'url'
   const [audioStartTime, setAudioStartTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [voiceoverConfig, setVoiceoverConfig] = useState(null); // New Voiceover State
 
   const [syncing, setSyncing] = useState(false);
   const [editingImage, setEditingImage] = useState(null); // URL of image to edit
@@ -798,101 +799,62 @@ export const useCreateStudio = ({
       const presets = JSON.parse(localStorage.getItem("ai_presets") || "[]");
       const matchingPreset = presets.find((p) => p.name === selectedTone);
 
-      if (matchingPreset) {
-        effectiveTone = matchingPreset.text;
-      }
+      if (matchingPreset) effectiveTone = matchingPreset.instructions;
 
-      const strategy = await generateViralStrategy(
+      const hooks = await generateViralStrategy(
         selectedProduct,
-        effectiveTone,
-        selectedProduct.image_url,
-        customInstructions,
-        caption,
+        effectiveTone +
+          (customInstructions ? `\nExtra: ${customInstructions}` : ""),
+        apiKey,
       );
-      setHooksList(strategy.hook_options);
 
-      if (setCurrentStrategy) setCurrentStrategy(strategy);
-      console.log("Viral Strategy:", strategy);
-      alert(
-        `¡Estrategia Viral Generada!\n\nÁngulo: ${strategy.angle}\nConcepto Visual: ${strategy.visual_concept}`,
-      );
+      if (hooks && hooks.length > 0) {
+        setHooksList(hooks);
+      } else {
+        alert("No se pudieron generar hooks.");
+      }
     } catch (error) {
-      console.error("Error generating AI content:", error);
-      alert("Error generando contenido. Revisa tu API Key.");
+      alert("Error generando hooks: " + error.message);
     } finally {
       setLoadingHooks(false);
     }
   };
 
   const generateAICaption = async () => {
-    if (!selectedProduct) return;
+    if (!selectedProduct || !apiKey) {
+      alert("Necesitas una API Key para esto.");
+      return;
+    }
     setLoadingCaption(true);
-
     try {
-      let effectiveTone = selectedTone;
-      const presets = JSON.parse(localStorage.getItem("ai_presets") || "[]");
-      const matchingPreset = presets.find((p) => p.name === selectedTone);
-
-      if (matchingPreset) {
-        effectiveTone = matchingPreset.text;
-      }
-
       const newCaption = await generateCaption(
         selectedProduct,
-        contentType === "video" ? "TikTok" : "Instagram",
-        effectiveTone,
-        customInstructions,
-        selectedProduct.image_url,
+        hook || "Oferta increíble",
+        selectedTone,
+        apiKey,
+        caption,
       );
       setCaption(newCaption);
-    } catch (error) {
-      console.error("Error generating caption:", error);
+      // Auto generate tags
+      generateAITags(newCaption);
+    } catch (e) {
+      alert("Error: " + e.message);
     } finally {
       setLoadingCaption(false);
     }
   };
 
-  const generateAITags = async () => {
-    if (!selectedProduct) return;
+  const generateAITags = async (contextCaption) => {
     setLoadingTags(true);
     try {
-      let effectiveTone = selectedTone;
-      const presets = JSON.parse(localStorage.getItem("ai_presets") || "[]");
-      const matchingPreset = presets.find((p) => p.name === selectedTone);
-
-      if (matchingPreset) {
-        effectiveTone = matchingPreset.text;
-      }
-
-      const text = await generateHashtags(
+      const tags = await generateHashtags(
+        contextCaption || caption,
         selectedProduct,
-        "instagram",
-        effectiveTone,
-        selectedProduct.image_url,
-        caption,
-        hooksList.join(" | "),
+        apiKey,
       );
-      setGeneratedHashtags(text);
-
-      const container = document.getElementById("hashtag-result");
-      const placeholder = document.getElementById("hashtag-placeholder");
-      if (placeholder) placeholder.style.display = "none";
-      if (container) {
-        container.innerHTML = "";
-        text.split(" ").forEach((tag, i) => {
-          if (!tag.trim()) return;
-          const span = document.createElement("button");
-          span.className =
-            "text-[11px] bg-slate-800 text-indigo-400 px-3 py-1.5 rounded-full border border-slate-700 font-bold hover:bg-indigo-500 hover:text-white transition-all animate-in zoom-in duration-300";
-          span.style.animationDelay = `${i * 100}ms`;
-          span.innerText = tag;
-          span.onclick = () => setCaption((prev) => prev + " " + tag);
-          container.appendChild(span);
-        });
-      }
-    } catch (error) {
-      console.error("Error generating tags:", error);
-      alert("Error: Verifica tu API Key");
+      setGeneratedHashtags(tags);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoadingTags(false);
     }
@@ -912,6 +874,8 @@ export const useCreateStudio = ({
       setAudioStartTime,
       audioDuration,
       setAudioDuration,
+      voiceoverConfig,
+      setVoiceoverConfig, // Export new state handle
       syncing,
       setSyncing,
       editingImage,
@@ -920,8 +884,6 @@ export const useCreateStudio = ({
       setShowEditor,
       showCatalog,
       setShowCatalog,
-      currentPreviewIndex,
-      setCurrentPreviewIndex,
       scheduleMode,
       setScheduleMode,
       scheduledDate,
@@ -952,14 +914,12 @@ export const useCreateStudio = ({
       setPages,
       showPageSelector,
       setShowPageSelector,
-      pendingAccessToken,
-      setPendingAccessToken,
       savedPresets,
       setSavedPresets,
     },
     actions: {
       handleSync,
-      handleAnalyzeImage: onAnalyzeImage,
+      handleAnalyzeImage,
       handleFileUpload,
       handleDeleteProduct,
       handleSaveUpdateProduct,

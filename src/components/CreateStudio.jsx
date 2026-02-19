@@ -8,10 +8,11 @@ import ViralCoach from './ViralCoach';
 import HashtagGenerator from './HashtagGenerator';
 import PreviewPhone from './PreviewPhone';
 import MediaPreview from './MediaPreview'; 
+import VoiceoverPanel from './VoiceoverPanel'; 
 import { 
   LayoutDashboard, Upload, Loader2, ImagePlus, Package, CheckCircle2, Trash2, ShoppingBag, 
   RefreshCw, ChevronUp, ChevronDown, Edit2, Sparkles, Tag, DollarSign, Save, X, Music, 
-  Link, Video, ImageIcon, Zap, Clock, Download, Smartphone, Sliders, Calendar, ArrowRight, ArrowLeft 
+  Link, Video, ImageIcon, Zap, Clock, Download, Smartphone, Sliders, Calendar, ArrowRight, ArrowLeft, Volume2, VolumeX 
 } from 'lucide-react';
 
 const STEPS = [
@@ -262,6 +263,62 @@ const CreateStudio = (props) => {
                                 placeholder="..."
                              />
                         </div>
+
+                        {/* NEW: AUDIO & VOICEOVER SECTION */}
+                        <div className="space-y-4">
+                            <h3 className="font-bold text-white flex items-center gap-2 px-1">
+                                <Music size={18} className="text-pink-400" /> Audio Studio
+                            </h3>
+                            
+                            {/* 1. Voiceover (TTS) */}
+                            <VoiceoverPanel 
+                                text={caption} 
+                                onAudioGenerated={(config) => actions.setVoiceoverConfig(config)} 
+                            />
+
+                            {/* 2. Safe Music Selection */}
+                            <div className="glass-panel p-4 rounded-2xl border border-indigo-500/20">
+                                <div className="flex items-center justify-between mb-4">
+                                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                        <Volume2 size={16} className="text-indigo-400" /> Música de Fondo
+                                     </h3>
+                                     <span className="text-[10px] bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20">
+                                        Royalty Free / Safe
+                                     </span>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button 
+                                        className={`p-3 rounded-xl border transition-all text-left flex items-center gap-3 ${!customAudioUrl ? 'bg-indigo-600 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
+                                        onClick={() => setCustomAudioUrl(null)}
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
+                                            <VolumeX size={14} className="text-slate-400"/>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-xs text-white">Sin Música</p>
+                                            <p className="text-[9px] text-slate-400">Solo voz o silencio</p>
+                                        </div>
+                                    </button>
+
+                                    <label className={`p-3 rounded-xl border transition-all text-left flex items-center gap-3 cursor-pointer ${customAudioUrl ? 'bg-emerald-600/20 border-emerald-500 ring-2 ring-emerald-500/20' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}>
+                                        <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
+                                            <Upload size={14} className="text-emerald-400"/>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-xs text-white truncate">{customAudioUrl ? 'Archivo Subido' : 'Subir Audio'}</p>
+                                            <p className="text-[9px] text-slate-400 truncate">{customAudioUrl ? 'Listo para usar' : 'MP3/WAV Seguro'}</p>
+                                        </div>
+                                        <input type="file" className="hidden" accept="audio/*" onChange={(e) => {
+                                            if(e.target.files[0]) {
+                                               const url = URL.createObjectURL(e.target.files[0]);
+                                               setCustomAudioUrl(url);
+                                            }
+                                        }} />
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                      </div>
 
                      {/* Right: Contextual Helper (ViralCoach) */}
@@ -348,7 +405,8 @@ const CreateStudio = (props) => {
                                 contentType={contentType} 
                                 content={caption} 
                                 product={selectedProduct} 
-                                audio={audio} 
+                                audio={customAudioUrl} 
+                                voiceover={state.voiceoverConfig}
                                 hooks={hook} 
                             />
                          </div>
