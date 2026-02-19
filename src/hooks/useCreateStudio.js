@@ -40,6 +40,7 @@ export const useCreateStudio = ({
   onSchedule,
   onAnalyzeImage,
   analyzingImage,
+  initialDate, // NEW: Receive selected date
 }) => {
   // Settings States
   const [uploading, setUploading] = useState(false);
@@ -60,8 +61,18 @@ export const useCreateStudio = ({
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
   // Scheduling State
-  const [scheduleMode, setScheduleMode] = useState("now"); // 'now', 'later'
-  const [scheduledDate, setScheduledDate] = useState(""); // ISO string YYYY-MM-DDTHH:mm
+  const [scheduleMode, setScheduleMode] = useState(
+    initialDate ? "later" : "now",
+  ); // 'now', 'later'
+  const [scheduledDate, setScheduledDate] = useState(
+    initialDate
+      ? new Date(
+          initialDate.getTime() - initialDate.getTimezoneOffset() * 60000,
+        )
+          .toISOString()
+          .slice(0, 16)
+      : "",
+  ); // Fix ISO timezone issue for input type="datetime-local"
 
   // Multi-Platform State
   const [targetPlatforms, setTargetPlatforms] = useState({

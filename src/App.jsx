@@ -38,6 +38,7 @@ import imageCompression from 'browser-image-compression';
 import { tiktokService } from './services/social/tiktok';
 import { whatsappService } from './services/social/whatsapp';
 import { aiResponder } from './services/aiResponder';
+import { usePostScheduler } from './hooks/usePostScheduler'; // Import Scheduler
 import { syncProductsFromFeed } from './utils/productSync';
 import { 
   LayoutDashboard, 
@@ -346,6 +347,9 @@ const AppContent = () => {
   const [currentStrategy, setCurrentStrategy] = useState(null);
   const [selectedHook, setSelectedHook] = useState(null);
 
+  // New: Create Post with Date
+  const [selectedDateForCreate, setSelectedDateForCreate] = useState(null);
+
   const handleAnalyzeImage = async () => {
     const imgToAnalyze = selectedProduct?.image_url || (selectedProduct?.gallery && selectedProduct.gallery[0]);
 
@@ -363,8 +367,7 @@ const AppContent = () => {
   };
   
   // Persist API Key & Settings -- NOW USING SUPABASE SETTINGS!
-  // We sync local state with 'settings' object from DB
-  // Persist API Key & Settings -- NOW USING HOOK!
+  // We sync local state with 'settings' object from DB using the hook
   const {
       apiKey, setApiKey,
       metaAppId, setMetaAppId,
@@ -380,11 +383,8 @@ const AppContent = () => {
       saveField
   } = useAppSettings(settings, updateSettings);
 
-  // 2. Auto-Save Debounced (Naive implementation: save on effect)
-  // To avoid too many DB writes, we should ideally use a 'Save' button or debounce.
-  // For now, let's keep the existing UI flow but allow updating DB.
-  
-  // Helper to save specific field - REMOVED (Provided by hook)
+  // Initialize Scheduler
+  usePostScheduler(scheduledPosts, setScheduledPosts, settings || {});
 
   // Detect OAuth Redirect & Auto-Exchange Token
   useEffect(() => {
@@ -673,7 +673,13 @@ const AppContent = () => {
       {critique && <CritiqueModal critique={critique} onClose={() => setCritique(null)} />}
 
         {activeTab === 'create' && <CreateStudio 
-            onSchedule={handleSchedule} 
+            initialProduct={selectedProduct} 
+            initialDate={selectedDateForCreate} // Pass date
+            onPublish={handleSchedule} 
+            onCancel={() => {
+                setSelectedDateForCreate(null); // Clear date
+                setActiveTab('dashboard');
+            }}
             apiKey={apiKey} 
             onPageConnect={(page) => {
                 setMetaPageId(page.id);
@@ -709,7 +715,10 @@ const AppContent = () => {
         )}
         {activeTab === 'calendar' && <CalendarView 
           posts={scheduledPosts} 
-          onAddClick={() => setActiveTab('create')}
+          onAddClick={(date) => {
+              setSelectedDateForCreate(date);
+              setActiveTab('create');
+          }}
         />}
         {activeTab === 'inbox' && <SocialInbox 
             pageId={metaPageId} 
