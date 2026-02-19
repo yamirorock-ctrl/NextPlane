@@ -54,10 +54,17 @@ const QuickAction = ({ icon: Icon, label, desc, onClick, colorClass }) => (
     </button>
 );
 
-const Dashboard = ({ posts, onRelaunch, onDelete, onRestore, onEmptyTrash, onViewChange }) => {
+const Dashboard = ({ posts, stats, onRelaunch, onDelete, onRestore, onEmptyTrash, onViewChange }) => {
   const [view, setView] = useState('active'); // 'active' | 'trash'
   const activePosts = posts.filter(p => !p.deleted_at);
   const trashPosts = posts.filter(p => p.deleted_at);
+
+  // Real Stats
+  const followers = stats?.followers || 0;
+  const impressions = stats?.impressions || 0;
+  const engagement = stats?.engagement || 0;
+  // engagementRate calculation can be tricky with day-trend data, but let's approximate
+  const engagementRate = impressions > 0 ? ((engagement / impressions) * 100).toFixed(1) + '%' : '0%';
 
   return (
     <div className="space-y-8 animate-fade-in-up pb-20">
@@ -70,38 +77,54 @@ const Dashboard = ({ posts, onRelaunch, onDelete, onRestore, onEmptyTrash, onVie
                 </h1>
                 <p className="text-slate-400 text-sm mt-1">Aquí tienes el resumen de tu imperio viral.</p>
             </div>
-            <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-xs font-bold text-emerald-400 tracking-wide uppercase">Sistemas Online</span>
-            </div>
+            {stats && (
+                <div className="flex items-center gap-3 bg-slate-900/50 backdrop-blur px-4 py-2 rounded-2xl border border-white/5">
+                    {stats.picture && <img src={stats.picture} alt="Page" className="w-8 h-8 rounded-full border border-indigo-500/30" />}
+                    <div className="text-right">
+                         <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-widest">Estado</span>
+                         <span className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                             <span className="relative flex h-2 w-2">
+                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                             </span>
+                             Conectado
+                         </span>
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard 
                 title="Programados" 
-                value={activePosts.length} 
+                value={activePosts.filter(p => p.status === 'scheduled').length} 
                 subtext="Posts en cola" 
                 icon={Calendar}
                 color="bg-indigo-500"
-                trend="+12%"
+                trend="Activo"
             />
             <StatCard 
-                title="Alcance Est." 
-                value={`${(activePosts.length * 1.5).toFixed(1)}K`} 
-                subtext="Impresiones pot." 
+                title="Alcance (28d)" 
+                value={new Intl.NumberFormat('es-MX', { notation: "compact" }).format(impressions)} 
+                subtext="Impresiones totales" 
                 icon={TrendingUp}
                 color="bg-purple-500"
+                trend={impressions > 0 ? "+Hoy" : "Sin datos"}
             />
             <StatCard 
-                title="Mensajes" 
-                value="0" 
-                subtext="Bandeja limpia" 
+                title="Engagement" 
+                value={new Intl.NumberFormat('es-MX', { notation: "compact" }).format(engagement)}
+                subtext={`Tasa: ${engagementRate}`}
+                icon={Zap}
+                color="bg-amber-500"
+            />
+            <StatCard 
+                title="Seguidores" 
+                value={new Intl.NumberFormat('es-MX', { notation: "compact" }).format(followers)}
+                subtext="Comunidad total" 
                 icon={MessageCircle}
-                color="bg-blue-500"
+                color="bg-emerald-500"
             />
             {/* Quick Action in Grid */}
             <button className="glass-card p-6 flex flex-col items-center justify-center gap-3 border-dashed border-slate-700/50 hover:border-indigo-500/50 hover:bg-slate-800/60 transition-all group cursor-pointer text-center">

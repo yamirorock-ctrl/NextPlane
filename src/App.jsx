@@ -349,6 +349,7 @@ const AppContent = () => {
 
   // New: Create Post with Date
   const [selectedDateForCreate, setSelectedDateForCreate] = useState(null);
+  const [pageStats, setPageStats] = useState(null); // Real Page Stats
 
   const handleAnalyzeImage = async () => {
     const imgToAnalyze = selectedProduct?.image_url || (selectedProduct?.gallery && selectedProduct.gallery[0]);
@@ -427,6 +428,20 @@ const AppContent = () => {
         }
      }
   }, [settings, metaAppId, metaAppSecret]);
+
+  // NEW: Load Dashboard Stats (Real One)
+  useEffect(() => {
+    const fetchStats = async () => {
+        const token = metaPageAccessToken || metaAccessToken;
+        // Wait for settings to load properly
+        if (!settingsLoading && metaPageId && token) {
+            console.log("🔄 Loading Page Stats...");
+            const stats = await facebookService.getPageInsights(metaPageId, token);
+            if(stats) setPageStats(stats);
+        }
+    };
+    fetchStats();
+  }, [metaPageId, metaPageAccessToken, metaAccessToken, settingsLoading]);
 
   // Init AI Responder & Helper
   useEffect(() => {
@@ -711,6 +726,7 @@ const AppContent = () => {
         {activeTab === 'dashboard' && (
             <Dashboard 
                 posts={scheduledPosts} 
+                stats={pageStats}
                 onRelaunch={handleRelaunch}
                 onDelete={handleSoftDelete}
                 onRestore={handleRestore}
@@ -733,7 +749,7 @@ const AppContent = () => {
         />}
         {activeTab === 'listening' && <SocialListening pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
         {activeTab === 'training' && <BrandVoiceTrainer />}
-        {activeTab === 'analytics' && <AnalyticsDashboard pageId={settings?.meta_page_id} accessToken={settings?.meta_page_access_token || settings?.meta_access_token} pageName={settings?.meta_page_name} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
+        {activeTab === 'analytics' && <AnalyticsDashboard pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
         {activeTab === 'settings' && <SettingsView 
           apiKey={apiKey} setApiKey={setApiKey}
           metaAppId={metaAppId} setMetaAppId={setMetaAppId}

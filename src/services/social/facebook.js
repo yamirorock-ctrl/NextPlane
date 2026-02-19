@@ -558,7 +558,74 @@ export const facebookService = {
     }
   },
 
-  // NEW: Explicitly Subscribe App to Page Events (Crucial for Webhooks)
+  // NEW: Get Real Insights for Dashboard & Analytics
+  getPageInsights: async (pageId, accessToken) => {
+    try {
+      console.log("📊 Fetching Page Insights (Detailed)...");
+
+      // 1. Get Page Profile Data (Followers, Name, Picture)
+      const pageUrl = `https://graph.facebook.com/v19.0/${pageId}?fields=fan_count,new_like_count,followers_count,picture&access_token=${accessToken}`;
+      const pageRes = await fetch(pageUrl);
+      const pageData = await pageRes.json();
+
+      if (pageData.error) throw pageData.error;
+
+      // 2. Get Insights (Impressions, Engagement - Last 10 Days Daily)
+      const metrics = "page_impressions,page_post_engagements"; // page_fans is lifetime, handled separately
+      const since = Math.floor(Date.now() / 1000) - 10 * 86400; // 10 days ago
+      const insightsUrl = `https://graph.facebook.com/v19.0/${pageId}/insights?metric=${metrics}&period=day&since=${since}&access_token=${accessToken}`;
+
+      const insightsRes = await fetch(insightsUrl);
+      const insightsData = await insightsRes.json();
+
+      let chartData = [];
+      let totalImpressions = 0;
+      let totalEngagement = 0;
+
+      if (insightsData.data) {
+        const impressionsItem = insightsData.data.find(
+          (d) => d.name === "page_impressions",
+        );
+        const engagementItem = insightsData.data.find(
+          (d) => d.name === "page_post_engagements",
+        );
+
+        if (impressionsItem && impressionsItem.values) {
+          chartData = impressionsItem.values.map((v, i) => {
+            const date = new Date(v.end_time).toLocaleDateString("es-MX", {
+              weekday: "short",
+            }); // e.g. "lun"
+            const engVal = engagementItem?.values[i]?.value || 0;
+
+            totalImpressions += v.value;
+            totalEngagement += engVal;
+
+            return {
+              name: date, // "Lun"
+              views: v.value,
+              likes: engVal, // Using likes as proxy for engagement in chart
+            };
+          });
+        }
+      }
+
+      const stats = {
+        followers: pageData.followers_count || pageData.fan_count || 0,
+        impressions: totalImpressions,
+        engagement: totalEngagement,
+        picture: pageData.picture?.data?.url,
+        chartData: chartData,
+        totalFans: pageData.fan_count, // Legacy support
+      };
+
+      console.log("📊 Stats loaded:", stats);
+      return stats;
+    } catch (e) {
+      console.error("Error fetching insights:", e);
+      return null; // Return null so UI handles "no data" gracefully
+    }
+  },
+
   subscribeApp: async (pageId, pageAccessToken) => {
     console.log("Subscribing App to Page Webhooks:", pageId);
 
