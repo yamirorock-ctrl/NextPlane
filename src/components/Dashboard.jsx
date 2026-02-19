@@ -65,7 +65,7 @@ const Dashboard = ({ posts, onRelaunch, onDelete, onRestore, onEmptyTrash, onVie
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-                <h1 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-200 to-slate-400">
+                <h1 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-linear-to-r from-white via-indigo-200 to-slate-400">
                     {getGreeting()}, Creador.
                 </h1>
                 <p className="text-slate-400 text-sm mt-1">Aquí tienes el resumen de tu imperio viral.</p>
@@ -211,7 +211,7 @@ const Dashboard = ({ posts, onRelaunch, onDelete, onRestore, onEmptyTrash, onVie
             <div className="space-y-6">
                 
                 {/* Coming Soon / Pro Tips */}
-                <div className="glass-card p-6 bg-gradient-to-br from-indigo-900/20 to-slate-900/40">
+                <div className="glass-card p-6 bg-linear-to-br from-indigo-900/20 to-slate-900/40">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
                             <Sparkles size={16} />
@@ -233,7 +233,7 @@ const Dashboard = ({ posts, onRelaunch, onDelete, onRestore, onEmptyTrash, onVie
                                      <span className="block text-xs font-bold text-slate-500">FEB</span>
                                      <span className="block text-lg font-black text-slate-300">{18+i}</span>
                                  </div>
-                                 <div className="h-8 w-[1px] bg-slate-800"></div>
+                                 <div className="h-8 w-px bg-slate-800"></div>
                                  <div>
                                      <div className="h-2 w-24 bg-slate-800 rounded mb-1"></div>
                                      <div className="h-2 w-16 bg-slate-800 rounded"></div>

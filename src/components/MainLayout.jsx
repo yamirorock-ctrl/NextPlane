@@ -56,7 +56,7 @@ const MainLayout = ({ children, activeTab, setActiveTab, user, onSignOut }) => {
   ];
 
   return (
-    <div className="flex h-screen w-full bg-[#050b14] relative overflow-hidden font-sans text-slate-100 selection:bg-indigo-500/30">
+    <div className="flex h-screen w-full bg-cosmic-900 relative overflow-hidden font-sans text-slate-100 selection:bg-indigo-500/30">
         
       {/* Background Ambience effect */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none animate-pulse-glow" />
@@ -73,17 +73,17 @@ const MainLayout = ({ children, activeTab, setActiveTab, user, onSignOut }) => {
         <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
            {!collapsed && (
                <div className="flex items-center gap-2">
-                   <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-lg shadow-lg shadow-indigo-500/20">
+                   <div className="bg-linear-to-tr from-indigo-500 to-purple-500 p-2 rounded-lg shadow-lg shadow-indigo-500/20">
                      <Sparkles size={20} className="text-white" />
                    </div>
-                   <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                   <h1 className="text-xl font-bold bg-clip-text text-transparent bg-linear-to-r from-white to-slate-400">
                      Yaminator
                    </h1>
                </div>
            )}
            {collapsed && (
               <div className="w-full flex justify-center">
-                 <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-lg shadow-lg">
+                 <div className="bg-linear-to-tr from-indigo-500 to-purple-500 p-2 rounded-lg shadow-lg">
                      <Sparkles size={20} className="text-white" />
                    </div>
               </div>
@@ -113,7 +113,7 @@ const MainLayout = ({ children, activeTab, setActiveTab, user, onSignOut }) => {
         {/* User Footer */}
         <div className="p-4 border-t border-white/5 bg-black/20">
             <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center shrink-0">
                     <span className="font-bold text-sm text-indigo-300">
                         {user?.email?.[0].toUpperCase() || 'U'}
                     </span>

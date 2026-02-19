@@ -89,7 +89,7 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
                 {/* Right Action Bar */}
                 <div className="absolute right-2 bottom-20 flex flex-col gap-4 items-center z-20">
                      <div className="w-10 h-10 rounded-full border border-white p-0.5 overflow-hidden bg-slate-800">
-                         <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full"></div>
+                         <div className="w-full h-full bg-linear-to-tr from-indigo-500 to-purple-500 rounded-full"></div>
                      </div>
                      {[
                          { icon: Heart, label: "12.5K", fill: true },
@@ -107,7 +107,7 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
                 </div>
 
                 {/* Bottom Info Overlay */}
-                <div className="absolute bottom-0 w-full p-4 pb-8 bg-gradient-to-t from-black via-black/40 to-transparent z-20 text-left">
+                <div className="absolute bottom-0 w-full p-4 pb-8 bg-linear-to-t from-black via-black/40 to-transparent z-20 text-left">
                     <p className="font-bold text-white text-sm mb-1 text-shadow">@tutienda.oficial</p>
                     <p className="text-white/90 text-[11px] leading-snug line-clamp-3 pr-10 mb-2 font-medium">
                         {content || "Escribe un copy genial..."} <span className="font-bold">#viral #tendencia</span>
@@ -126,7 +126,7 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
                    <div className="flex items-center gap-2">
-                       <div className="w-7 h-7 bg-gradient-to-tr from-yellow-400 to-red-500 rounded-full p-[1.5px]">
+                       <div className="w-7 h-7 bg-linear-to-tr from-yellow-400 to-red-500 rounded-full p-[1.5px]">
                            <div className="w-full h-full bg-white rounded-full border border-white overflow-hidden">
                                 <div className="w-full h-full bg-slate-200"></div>
                            </div>

@@ -71,7 +71,7 @@ const CreateStudio = (props) => {
 
       {/* -- WIZARD HEADER -- */}
       <div className="h-20 shrink-0 flex items-center justify-between px-8 border-b border-white/5 bg-slate-900/30 backdrop-blur-md z-20">
-          <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-300 flex items-center gap-2">
+          <h2 className="text-xl font-bold bg-clip-text text-transparent bg-linear-to-r from-white to-indigo-300 flex items-center gap-2">
             <Zap className="text-amber-400" size={24} fill="currentColor" />
             Estudio Viral
           </h2>
@@ -107,7 +107,7 @@ const CreateStudio = (props) => {
               <button 
                 onClick={currentStep === 3 ? handleScheduleClick : nextStep}
                 disabled={!canProceed()}
-                className={`px-6 py-2 rounded-xl font-bold text-white shadow-lg transition-all flex items-center gap-2 ${currentStep === 3 ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:scale-105' : 'bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:grayscale'}`}
+                className={`px-6 py-2 rounded-xl font-bold text-white shadow-lg transition-all flex items-center gap-2 ${currentStep === 3 ? 'bg-linear-to-r from-emerald-500 to-teal-500 hover:scale-105' : 'bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:grayscale'}`}
               >
                   {currentStep === 3 ? 'Despegar 🚀' : 'Siguiente'} <ArrowRight size={16} />
               </button>
@@ -168,7 +168,7 @@ const CreateStudio = (props) => {
                                                 <MediaPreview src={prod.image_url} className="w-full h-full object-cover" />
                                             </div>
                                             
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-3 text-left">
+                                            <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-3 text-left">
                                                 <p className="font-bold text-white text-xs truncate drop-shadow-md">{prod.name}</p>
                                                 <div className="flex justify-between items-center mt-1">
                                                     <p className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-900/50 px-1.5 rounded">${prod.price}</p>
@@ -227,7 +227,7 @@ const CreateStudio = (props) => {
                                 <button 
                                     onClick={generateAICaption}
                                     disabled={loadingCaption}
-                                    className="flex-1 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {loadingCaption ? <Loader2 className="animate-spin" /> : <Sparkles size={18} />}
                                     Generar Copy Mágico

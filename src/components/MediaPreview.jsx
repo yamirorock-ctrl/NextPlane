@@ -40,13 +40,13 @@ const MediaPreview = ({ src, className, alt = "Preview", animate = false, overla
         <img 
             src={src} 
             alt={alt} 
-            className={`w-full h-full object-cover transition-transform duration-[10000ms] ease-linear ${animate ? 'scale-125 translate-x-3 translate-y-3' : ''}`} 
+            className={`w-full h-full object-cover transition-transform duration-10000 ease-linear ${animate ? 'scale-125 translate-x-3 translate-y-3' : ''}`} 
         />
         
         {/* Animated Overlay Layers (Only if animating) */}
         {animate && (
             <>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
                 
                 {/* Text Hook Overlay */}
                 {overlayText && (
