@@ -183,17 +183,19 @@ export const instagramService = {
     }
   },
 
-  // 5. Get Instagram Insights (Followers, Reach, etc.)
+  // 5. Get Instagram Insights (Enhanced)
   getInsights: async (accessToken, igUserId) => {
     if (!igUserId || !accessToken) return null;
 
     try {
-      // A. Account Info (Followers)
-      const userUrl = `https://graph.facebook.com/v19.0/${igUserId}?fields=followers_count,media_count&access_token=${accessToken}`;
+      console.log("📸 Fetching IG Insights...", igUserId);
+
+      // A. Account Info (Followers, Picture)
+      const userUrl = `https://graph.facebook.com/v19.0/${igUserId}?fields=followers_count,media_count,username,profile_picture_url&access_token=${accessToken}`;
 
       // B. Daily Insights (last 30 days)
-      // Note: metric=impressions,reach
-      const insightsUrl = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=impressions,reach&period=day&date_preset=this_month&access_token=${accessToken}`;
+      const since = Math.floor(Date.now() / 1000) - 30 * 86400;
+      const insightsUrl = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=impressions,reach&period=day&since=${since}&access_token=${accessToken}`;
 
       const [userRes, insightsRes] = await Promise.allSettled([
         fetch(userUrl),
@@ -201,45 +203,49 @@ export const instagramService = {
       ]);
 
       let followers = 0;
+      let picture = null;
       let chartData = [];
-      let reachTotal = 0;
+      let totalImpressions = 0;
+      let totalReach = 0;
 
       // Process User Data
       if (userRes.status === "fulfilled" && userRes.value.ok) {
         const userData = await userRes.value.json();
         followers = userData.followers_count || 0;
-      } else {
-        console.warn("IG User Data Load Failed", userRes);
+        picture = userData.profile_picture_url;
       }
 
       // Process Insights Data
       if (insightsRes.status === "fulfilled" && insightsRes.value.ok) {
         const data = await insightsRes.value.json();
-        const impressions =
-          data.data.find((m) => m.name === "impressions")?.values || [];
+        if (data.data) {
+          const impItem = data.data.find((d) => d.name === "impressions");
+          const reachItem = data.data.find((d) => d.name === "reach");
 
-        // Map to Chart Format (Same as Facebook)
-        chartData = impressions
-          .map((imp) => {
-            const date = new Date(imp.end_time);
-            date.setDate(date.getDate() - 1);
-            return {
-              name: date.toLocaleDateString("es-ES", { weekday: "short" }),
-              views: imp.value,
-              // likes: 0 // IG API doesn't give daily "likes" aggregate easily in this endpoint, requires media iteration
-            };
-          })
-          .slice(-7); // Last 7 days
+          if (impItem && impItem.values) {
+            chartData = impItem.values.map((v, i) => {
+              totalImpressions += v.value;
+              const rVal = reachItem?.values[i]?.value || 0;
+              totalReach += rVal;
 
-        reachTotal = impressions.reduce((acc, curr) => acc + curr.value, 0);
-      } else {
-        console.warn("IG Insights Load Failed", insightsRes);
+              return {
+                name: new Date(v.end_time).toLocaleDateString("es-MX", {
+                  weekday: "short",
+                }),
+                views: v.value,
+                likes: rVal, // Use 'likes' key for chart compatibility (Reach)
+              };
+            });
+          }
+        }
       }
 
       return {
         followers,
+        picture,
+        impressions: totalImpressions,
+        reach: totalReach,
         chartData,
-        reachTotal,
       };
     } catch (e) {
       console.error("IG Insights Critical Error:", e);

@@ -266,8 +266,9 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#fff' }}
-                  itemStyle={{ color: '#fff' }}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f8fafc' }}
+                  itemStyle={{ color: '#cbd5e1' }}
+                  labelStyle={{ color: '#94a3b8' }}
                 />
                 <Area type="monotone" dataKey="views" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorViews)" activeDot={{r: 6}} />
                 <Area type="monotone" dataKey="likes" stroke="#ec4899" strokeWidth={3} fillOpacity={1} fill="url(#colorLikes)" activeDot={{r: 6}} />
@@ -296,7 +297,8 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                   ))}
                 </Pie>
                 <Tooltip 
-                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
+                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f8fafc' }}
+                   itemStyle={{ color: '#cbd5e1' }}
                 />
                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
               </PieChart>

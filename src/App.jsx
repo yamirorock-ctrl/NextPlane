@@ -429,19 +429,33 @@ const AppContent = () => {
      }
   }, [settings, metaAppId, metaAppSecret]);
 
-  // NEW: Load Dashboard Stats (Real One)
+  // NEW: Load Dashboard Stats (Real One - Combined)
   useEffect(() => {
     const fetchStats = async () => {
         const token = metaPageAccessToken || metaAccessToken;
         // Wait for settings to load properly
         if (!settingsLoading && metaPageId && token) {
-            console.log("🔄 Loading Page Stats...");
-            const stats = await facebookService.getPageInsights(metaPageId, token);
-            if(stats) setPageStats(stats);
+            console.log("🔄 Loading Social Stats (FB + IG)...");
+            
+            const [fbStats, igStats] = await Promise.all([
+                facebookService.getPageInsights(metaPageId, token),
+                metaInstagramId ? instagramService.getInsights(token, metaInstagramId) : null
+            ]);
+
+            // Combine stats
+            const combined = {
+                followers: (fbStats?.followers || 0) + (igStats?.followers || 0),
+                impressions: (fbStats?.impressions || 0) + (igStats?.impressions || 0),
+                engagement: (fbStats?.engagement || 0), 
+                picture: igStats?.picture || fbStats?.picture, // Prefer IG pic if available
+                breakdown: { fb: fbStats, ig: igStats }
+            };
+            
+            if(combined.followers > 0 || combined.impressions > 0) setPageStats(combined);
         }
     };
     fetchStats();
-  }, [metaPageId, metaPageAccessToken, metaAccessToken, settingsLoading]);
+  }, [metaPageId, metaPageAccessToken, metaAccessToken, settingsLoading, metaInstagramId]);
 
   // Init AI Responder & Helper
   useEffect(() => {
