@@ -494,8 +494,12 @@ const AppContent = () => {
     setIsScheduling(true);
 
     // 1. Prepare for DB
+    let platform = 'facebook';
+    if (postData.targetPlatforms?.tiktok) platform = 'tiktok';
+    else if (postData.targetPlatforms?.instagram) platform = 'instagram';
+
     const dbPost = {
-        platform: postData.targetPlatforms?.tiktok ? 'tiktok' : 'facebook', // Simplified
+        platform: platform,
         content_type: (postData.image && (postData.image.match(/\.(mp4|webm|mov|ogg)$/i) || postData.image.includes('video'))) ? 'video' : 'photo',
         caption: postData.caption,
         image_url: postData.image,
@@ -715,6 +719,7 @@ const AppContent = () => {
         )}
         {activeTab === 'calendar' && <CalendarView 
           posts={scheduledPosts} 
+          onPostClick={handleRelaunch} // Allow editing/relaunching from calendar
           onAddClick={(date) => {
               setSelectedDateForCreate(date);
               setActiveTab('create');
