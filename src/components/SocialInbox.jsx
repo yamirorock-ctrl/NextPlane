@@ -106,39 +106,41 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
   };
 
   const handleSync = async (showAlerts = true) => {
-      if(!pageId || !accessToken) return showAlerts && alert("Primero conecta Facebook.");
-      setLoading(true);
+      // 1. Prioritize Page Token over User Token
+      const effectiveToken = localStorage.getItem('meta_page_access_token') || accessToken;
       
+      if(!pageId || !effectiveToken) {
+          return showAlerts && alert("⚠️ Error: No hay conexión activa con la página. Re-conecta en Configuración.");
+      }
+      
+      setLoading(true);
       try {
-          console.log("🔄 Iniciando sincronización de historial...");
+          console.log(`🔄 Sincronizando Página: ${pageId} con Token: ${effectiveToken.substring(0, 10)}...`);
           
-          // Fetch from both platforms in parallel
+          // 2. Fetch from both platforms with cache busting
           const [fbConvos, igConvos] = await Promise.all([
-              facebookService.getConversations(pageId, accessToken, 'facebook'),
+              facebookService.getConversations(pageId, effectiveToken, 'facebook'),
               instagramId 
-                ? facebookService.getConversations(pageId, accessToken, 'instagram', instagramId) 
+                ? facebookService.getConversations(pageId, effectiveToken, 'instagram', instagramId) 
                 : Promise.resolve([])
           ]);
 
           const allConvos = [...fbConvos, ...igConvos];
+          console.log(`📥 API retornó ${allConvos.length} conversaciones.`);
+          
           const newMessagesBatch = [];
-
           allConvos.forEach(conv => {
               if (conv.messages) {
                   conv.messages.forEach(msg => {
-                      // CRITICAL: Ensure we use the real creation date from Meta. 
-                      // Fallback to conversation updated_time, NOT current time.
-                      const messageDate = msg.created_at || conv.timestamp || new Date().toISOString();
-                      
                       newMessagesBatch.push({
-                          platform: conv.platform,
+                          platform: conv.platform || 'facebook',
                           external_id: msg.id,
                           sender_id: conv.sender_id || conv.id,
                           sender_name: conv.user,
                           avatar_url: conv.avatar,
                           text: msg.text,
                           is_from_me: msg.sender === 'me',
-                          created_at: messageDate, 
+                          created_at: msg.created_at || conv.timestamp || new Date().toISOString(),
                           status: 'read'
                       });
                   });
@@ -146,25 +148,16 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
           });
 
           if (newMessagesBatch.length > 0) {
-              console.log(`📥 Guardando ${newMessagesBatch.length} mensajes en la base de datos...`);
-              
-              // Use UPSERT by external_id to avoid duplicates if table supports it,
-              // or just filter out existing messages by ID.
-              // We'll filter locally against 'messages' state just in case.
-              const existingIds = new Set(messages.map(m => m.external_id));
-              const uniqueNew = newMessagesBatch.filter(m => !existingIds.has(m.external_id));
-
-              if (uniqueNew.length > 0) {
-                  const { error } = await supabase.from('inbox_messages').upsert(uniqueNew, { onConflict: 'external_id' });
-                  if(error) console.error("Error upserting:", error);
-              }
+              console.log(`💾 Guardando ${newMessagesBatch.length} mensajes en Supabase...`);
+              const { error } = await supabase.from('inbox_messages').upsert(newMessagesBatch, { onConflict: 'external_id' });
+              if(error) console.error("Error upserting:", error);
           }
           
-          if(showAlerts) alert(`✅ Sincronización completa. Se procesaron ${allConvos.length} conversaciones.`);
-          fetchMessages(); // Refresh UI
+          if(showAlerts) alert(`✅ Sincronización realizada. Se encontraron ${allConvos.length} hilos.`);
+          fetchMessages(); 
       } catch (err) {
           console.error("Sync Error:", err);
-          if(showAlerts) alert("⚠️ Error sincronizando: " + err.message);
+          if(showAlerts) alert("⚠️ Error de conexión con Meta: " + err.message);
       } finally {
           setLoading(false);
       }
