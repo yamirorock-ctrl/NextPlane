@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-    Pause, Play, VolumeX, Volume2, ChevronLeft, ChevronRight, Image as ImageIcon, Heart, MessageCircle, Share2, Music
+    Play, VolumeX, Volume2, Image as ImageIcon, Heart, MessageCircle, Share2, Music
 } from 'lucide-react';
 import MediaPreview from './MediaPreview';
 
@@ -8,10 +8,10 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
   const isVideoMode = contentType === 'video';
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
-  const [isMuted, setIsMuted] = useState(false); // Default unmuted for better UX? Or muted for autoplay policy. Let's start muted but allow unmute.
+  const [isMuted, setIsMuted] = useState(false); 
   
   // Audio Refs
-  const audioRef = React.useRef(null);
+  const audioRef = useRef(null);
 
   // Handle Background Audio (Music)
   useEffect(() => {
@@ -40,7 +40,6 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
       }
 
       if (isAutoPlay && !isMuted) {
-          console.log("Attempting bg audio play");
           audioEl.play().catch(e => console.log("Autoplay blocked", e));
       } else {
           audioEl.pause();
@@ -54,21 +53,28 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
 
   // Handle Voiceover (TTS)
   useEffect(() => {
-    // Cancel any ongoing speech when component unmounts or deps change
+    // Cancel any ongoing speech when component unmounts
     return () => window.speechSynthesis.cancel();
   }, []);
 
   useEffect(() => {
+    // IMMEDIATE STOP if conditions not met
     if (!voiceover || isMuted || !isAutoPlay) {
         window.speechSynthesis.cancel();
         return;
     }
 
-    // Small delay to let music start first
+    // Small delay to synchronize with video start slightly
     const timer = setTimeout(() => {
+        // Double check condition inside timeout
+        if (!isAutoPlay || isMuted) return;
+
         if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
 
-        const utterance = new SpeechSynthesisUtterance(voiceover.text);
+        // Fallback cleaner if not cleaned upstream
+        const cleanText = voiceover.text.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
         
         // Try to find the exact voice again
         const voices = window.speechSynthesis.getVoices();
@@ -77,15 +83,16 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
         
         utterance.rate = voiceover.rate || 1;
         utterance.pitch = voiceover.pitch || 1;
-        utterance.volume = 1; // Max volume for voice
+        utterance.volume = 1;
 
         window.speechSynthesis.speak(utterance);
     }, 500);
 
-    return () => clearTimeout(timer);
-  }, [voiceover, isMuted, isAutoPlay, currentSlide]); // Restart on slide change? Maybe not. Let's remove currentSlide if we want it continuous.
-  // Actually, for a single ad, we want it to run once per loop usually, or just once.
-  // Re-adding it to deps ONLY if we want it to restart. For now, let's keep it simple: plays when Voiceover changes or un-mutes.
+    return () => {
+        clearTimeout(timer);
+        window.speechSynthesis.cancel(); // Stop on effect cleanup
+    };
+  }, [voiceover, isMuted, isAutoPlay, currentSlide]);
 
   // Normalize slides
   const slides = useMemo(() => {
@@ -109,10 +116,6 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
     return () => clearInterval(interval);
   }, [slides, slides.length, isAutoPlay]);
   
-  // Controls
-  const nextSlide = () => setCurrentSlide(curr => (curr + 1) % slides.length);
-  const prevSlide = () => setCurrentSlide(curr => (curr - 1 + slides.length) % slides.length);
-  
   // Get current media
   const currentMedia = slides[currentSlide];
   
@@ -133,7 +136,7 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
       {/* Mute Toggle Overlay (Visible on hover or tap) */}
       <button 
         onClick={() => setIsMuted(prev => !prev)}
-        className="absolute top-4 right-4 z-40 w-8 h-8 flex items-center justify-center bg-black/40 backdrop-blur-md rounded-full text-white/80 hover:bg-black/60 transition-colors"
+        className="absolute top-4 right-4 z-40 w-8 h-8 flex items-center justify-center bg-black/40 backdrop-blur-md rounded-full text-white/80 hover:bg-black/60 transition-colors pointer-events-auto"
       >
         {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
       </button>
@@ -161,8 +164,8 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                     <MediaPreview 
                         src={currentMedia} 
                         className="w-full h-full object-cover"
-                        animate={isArtificialVideo} // Trigger Ken Burns if artificial
-                        overlayText={hooks} // Pass hook for overlay animation
+                        animate={isArtificialVideo && isAutoPlay} // Stops animation if paused
+                        overlayText={hooks} 
                     />
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
@@ -171,10 +174,22 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                     </div>
                 )}
                 
+                {/* Play/Pause Center Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+                     {!isAutoPlay && (
+                         <div className="bg-black/40 backdrop-blur-sm p-4 rounded-full animate-fade-in pointer-events-auto cursor-pointer hover:bg-black/60 transition-all scale-110" onClick={() => setIsAutoPlay(true)}>
+                             <Play size={32} className="text-white fill-white" />
+                         </div>
+                     )}
+                </div>
+
+                {/* Click to Pause Area (Full Screen) */}
+                <div className="absolute inset-0 z-10" onClick={() => setIsAutoPlay(prev => !prev)}></div>
+                
                 {/* Right Action Bar */}
-                <div className="absolute right-2 bottom-20 flex flex-col gap-4 items-center z-20">
+                <div className="absolute right-2 bottom-20 flex flex-col gap-4 items-center z-20 pointer-events-none">
                      <div className="w-10 h-10 rounded-full border border-white p-0.5 overflow-hidden bg-slate-800">
-                         <div className="w-full h-full bg-linear-to-tr from-indigo-500 to-purple-500 rounded-full"></div>
+                         <div className="w-full h-full bg-linear-to-tr from-indigo-500 to-purple-500 rounded-full animate-spin-slow" style={{animationPlayState: isAutoPlay ? 'running' : 'paused'}}></div>
                      </div>
                      {[
                          { icon: Heart, label: "12.5K", fill: true },
@@ -186,13 +201,13 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                              <span className="text-[10px] text-white font-bold">{action.label}</span>
                          </div>
                      ))}
-                     <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700/50 flex items-center justify-center animate-spin-slow mt-2">
+                     <div className={`w-10 h-10 rounded-full bg-slate-900 border border-slate-700/50 flex items-center justify-center mt-2 ${isAutoPlay ? 'animate-spin-slow' : ''}`}>
                          <Music size={14} className="text-white"/>
                      </div>
                 </div>
 
                 {/* Bottom Info Overlay */}
-                <div className="absolute bottom-0 w-full p-4 pb-8 bg-linear-to-t from-black via-black/40 to-transparent z-20 text-left">
+                <div className="absolute bottom-0 w-full p-4 pb-8 bg-linear-to-t from-black via-black/40 to-transparent z-20 text-left pointer-events-none">
                     <p className="font-bold text-white text-sm mb-1 text-shadow">@tutienda.oficial</p>
                     <p className="text-white/90 text-[11px] leading-snug line-clamp-3 pr-10 mb-2 font-medium">
                         {content || "Escribe un copy genial..."} <span className="font-bold">#viral #tendencia</span>
