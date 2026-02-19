@@ -280,16 +280,22 @@ export const facebookService = {
   },
 
   // NEW: Fetch Conversations for Inbox
-  getConversations: async (pageId, accessToken, platform = "facebook") => {
+  getConversations: async (
+    pageId,
+    accessToken,
+    platform = "facebook",
+    instagramId = null,
+  ) => {
     if (!pageId || !accessToken) return [];
 
     const appSecret = localStorage.getItem("meta_app_secret");
     const proof = await generateAppSecretProof(accessToken, appSecret);
     const proofParam = proof ? `&appsecret_proof=${proof}` : "";
 
+    // Important: For Instagram, the 'self' ID in participants is the Instagram ID, not the Page ID.
+    const selfId = platform === "instagram" ? instagramId : pageId;
+
     // Fetch conversations (DMs)
-    // For Instagram, we use the same endpoint but might need platform filter if unified inbox is desired.
-    // However, usually fetching from Page ID with platform=instagram is the way for IG DMs.
     const platformParam = platform === "instagram" ? "&platform=instagram" : "";
     const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages.limit(100){message,from,created_time}&limit=100&access_token=${accessToken}${proofParam}${platformParam}`;
 
@@ -299,17 +305,21 @@ export const facebookService = {
       if (data.error) throw new Error(data.error.message);
 
       return data.data.map((conv) => {
-        // Find the other person (not the Page)
+        // Find the other person (exclude selfId)
+        const participants = conv.participants?.data || [];
         const otherPerson =
-          conv.participants?.data.find((p) => p.id !== pageId) ||
-          conv.participants?.data[0];
+          participants.find((p) => p.id !== selfId) || participants[0];
+
+        // Fallback for preview if snippet is missing
+        const lastMsg = conv.messages?.data?.[0]?.message || "";
+        const preview = conv.snippet || lastMsg || "(Sin mensaje de texto)";
 
         return {
           id: conv.id,
           sender_id: otherPerson?.id,
           user: otherPerson?.name || "Usuario Desconocido",
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(otherPerson?.name || "U")}&background=random`,
-          preview: conv.snippet,
+          preview: preview,
           time: new Date(conv.updated_time).toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -321,7 +331,7 @@ export const facebookService = {
             conv.messages?.data?.reverse().map((m) => ({
               id: m.id,
               text: m.message,
-              sender: m.from?.id === pageId ? "me" : "them",
+              sender: m.from?.id === selfId ? "me" : "them",
               created_at: m.created_time,
             })) || [],
         };

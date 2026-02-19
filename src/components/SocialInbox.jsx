@@ -115,9 +115,9 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
           // Fetch from both platforms in parallel
           const [fbConvos, igConvos] = await Promise.all([
               facebookService.getConversations(pageId, accessToken, 'facebook'),
-              instagramService.getInstagramAccount(accessToken, pageId)
-                  .then(igId => igId ? facebookService.getConversations(pageId, accessToken, 'instagram') : [])
-                  .catch(() => []) 
+              instagramId 
+                ? facebookService.getConversations(pageId, accessToken, 'instagram', instagramId) 
+                : Promise.resolve([])
           ]);
 
           const allConvos = [...fbConvos, ...igConvos];
