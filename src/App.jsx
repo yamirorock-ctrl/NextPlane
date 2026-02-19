@@ -320,17 +320,18 @@ const AppDispatcher = () => {
 
 
 
+import MainLayout from './components/MainLayout';
+
 const AppContent = () => {
-  const [activeTab, setActiveTab] = useState('create');
+  const [activeTab, setActiveTab] = useState('dashboard'); // Default to Dashboard for the "OS" feel
   const [isAuthRedirect, setIsAuthRedirect] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastPlatform, setLastPlatform] = useState('');
   const [scheduledPosts, setScheduledPosts] = useState([]);
   const [isScheduling, setIsScheduling] = useState(false);
   
-  const { settings, updateSettings, signOut } = useAuth(); // Import from AuthContext
+  const { settings, updateSettings, signOut, user } = useAuth(); 
 
   // GLOBAL STATE (Lifted from CreateStudio)
   const [products, setProducts] = useState([]);
@@ -516,23 +517,12 @@ const AppContent = () => {
             product: postData.product // Keep the full object for UI
         };
         
-        setScheduledPosts(prev => {
-           // Prevent duplicates locally by ID check
-           const exists = prev.some(p => p.id === newPost.id);
-           if (exists) return prev;
-           return [newPost, ...prev];
-        });
+        setScheduledPosts(prev => [newPost, ...prev]);
 
-        const activePlatforms = [];
-        if (postData.targetPlatforms?.instagram) activePlatforms.push('Instagram');
-        if (postData.targetPlatforms?.facebook) activePlatforms.push('Facebook');
-        setLastPlatform(activePlatforms.join(' + ') || 'Platform');
+        setLastPlatform(postData.targetPlatforms?.instagram ? 'instagram' : 'facebook');
         
         setShowSuccess(true);
-        setTimeout(() => {
-          setShowSuccess(false);
-          setActiveTab('dashboard');
-        }, 2500);
+        setTimeout(() => setShowSuccess(false), 5000);
 
 
     } catch(err) {
@@ -670,113 +660,135 @@ const AppContent = () => {
   }
 
   return (
-    <div className="flex h-screen bg-slate-950 font-sans text-slate-200 overflow-hidden selection:bg-indigo-500/30 selection:text-white">
+    <MainLayout 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        user={user}
+        onSignOut={signOut}
+        onDownloadClick={() => setShowDownload(true)}
+        pageName={metaPageName} 
+    >
       {showDownload && <DownloadModal onClose={() => setShowDownload(false)} />}
       {showSuccess && <SuccessModal onClose={() => setShowSuccess(false)} platform={lastPlatform} />}
       {critique && <CritiqueModal critique={critique} onClose={() => setCritique(null)} />}
 
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        mobileMenuOpen={mobileMenuOpen} 
-        setMobileMenuOpen={setMobileMenuOpen}
-        onDownloadClick={() => setShowDownload(true)}
-        pageName={metaPageName} 
-      />
-      
-      <div className="flex-1 flex flex-col min-w-0 relative">
-        <div className="absolute top-0 left-0 w-full h-[300px] bg-indigo-900/10 blur-[100px] pointer-events-none"></div>
-        
-        <header className="md:hidden bg-slate-950/80 backdrop-blur-md border-b border-slate-800 text-white p-4 flex items-center justify-between z-20 sticky top-0">
-          <div className="flex items-center gap-3 font-bold">
-            <img src="/logo.png" alt="Yaminator" className="w-8 h-8 rounded-full border border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.5)] bg-slate-900 object-cover" />
-            <span>Yaminator</span>
+        {activeTab === 'create' && <CreateStudio 
+            onSchedule={handleSchedule} 
+            apiKey={apiKey} 
+            onPageConnect={(page) => {
+                setMetaPageId(page.id);
+                setMetaPageName(page.name);
+                if(page.access_token) setMetaPageAccessToken(page.access_token);
+            }}
+            // Passed State
+            products={products}
+            setProducts={setProducts}
+            selectedProduct={selectedProduct}
+            setSelectedProduct={setSelectedProduct}
+            caption={caption}
+            setCaption={setCaption}
+            generatedHashtags={generatedHashtags}
+            setGeneratedHashtags={setGeneratedHashtags}
+            // Video Props
+            videoScript={currentStrategy} // We use the strategy object as the script source
+            selectedHook={selectedHook}
+            setSelectedHook={setSelectedHook}
+            // onGenerateScript removed (it's internal to CreateStudio)
+            setCurrentStrategy={setCurrentStrategy}
+            onAnalyzeImage={handleAnalyzeImage}
+            analyzingImage={analyzingImage}
+        />}
+        {activeTab === 'dashboard' && (
+            <Dashboard 
+                posts={scheduledPosts} 
+                onRelaunch={handleRelaunch}
+                onDelete={handleSoftDelete}
+                onRestore={handleRestore}
+                onEmptyTrash={handleEmptyTrash}
+            />
+        )}
+        {activeTab === 'calendar' && <CalendarView 
+          posts={scheduledPosts} 
+          onAddClick={() => setActiveTab('create')}
+        />}
+        {activeTab === 'inbox' && <SocialInbox 
+            pageId={metaPageId} 
+            accessToken={metaPageAccessToken || metaAccessToken} 
+            pageName={metaPageName}
+            instagramId={metaInstagramId}
+        />}
+        {activeTab === 'listening' && <SocialListening pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
+        {activeTab === 'training' && <BrandVoiceTrainer />}
+        {activeTab === 'analytics' && <AnalyticsDashboard pageId={settings?.meta_page_id} accessToken={settings?.meta_page_access_token || settings?.meta_access_token} pageName={settings?.meta_page_name} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
+        {activeTab === 'settings' && <SettingsView 
+          apiKey={apiKey} setApiKey={setApiKey}
+          metaAppId={metaAppId} setMetaAppId={setMetaAppId}
+          metaAppSecret={metaAppSecret} setMetaAppSecret={setMetaAppSecret}
+          metaAccessToken={metaAccessToken} setMetaAccessToken={setMetaAccessToken}
+          metaPageId={metaPageId} setMetaPageId={setMetaPageId}
+          tiktokKey={tiktokKey} setTiktokKey={setTiktokKey}
+          tiktokSecret={tiktokSecret} setTiktokSecret={setTiktokSecret}
+          setMetaPageName={setMetaPageName} // Passed here!
+          metaPageAccessToken={metaPageAccessToken} setMetaPageAccessToken={setMetaPageAccessToken}
+          metaInstagramId={metaInstagramId} setMetaInstagramId={setMetaInstagramId}
+          knowledgeBase={knowledgeBase} setKnowledgeBase={setKnowledgeBase}
+          saveField={saveField}
+        />}
+        {activeTab === 'products' && <ProductManager onRelaunch={handleProductRelaunch} />}
+        {activeTab === 'trends' && (
+          <div className="h-full flex flex-col items-center justify-center text-center opacity-50 space-y-4">
+            <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center">
+              <LayoutDashboard size={40} className="text-slate-600" />
+            </div>
+            <h2 className="text-3xl font-bold text-slate-700">Próximamente</h2>
+            <p className="text-slate-500">Estamos cocinando algo especial para la sección {activeTab}.</p>
           </div>
-          <button onClick={() => setMobileMenuOpen(true)}><Menu size={24} /></button>
-        </header>
+        )}
 
-        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 z-10 custom-scrollbar">
-          <div className="max-w-[1600px] mx-auto h-full">
-            {activeTab === 'create' && <CreateStudio 
-                onSchedule={handleSchedule} 
-                apiKey={apiKey} 
-                onPageConnect={(page) => {
-                    setMetaPageId(page.id);
-                    setMetaPageName(page.name);
-                    if(page.access_token) setMetaPageAccessToken(page.access_token);
-                }}
-                // Passed State
-                products={products}
-                setProducts={setProducts}
-                selectedProduct={selectedProduct}
-                setSelectedProduct={setSelectedProduct}
-                caption={caption}
-                setCaption={setCaption}
-                generatedHashtags={generatedHashtags}
-                setGeneratedHashtags={setGeneratedHashtags}
-                // Video Props
-                videoScript={currentStrategy} // We use the strategy object as the script source
-                selectedHook={selectedHook}
-                setSelectedHook={setSelectedHook}
-                // onGenerateScript removed (it's internal to CreateStudio)
-                setCurrentStrategy={setCurrentStrategy}
-                onAnalyzeImage={handleAnalyzeImage}
-                analyzingImage={analyzingImage}
-            />}
-            {activeTab === 'dashboard' && (
-                <Dashboard 
-                    posts={scheduledPosts} 
-                    onRelaunch={handleRelaunch}
-                    onDelete={handleSoftDelete}
-                    onRestore={handleRestore}
-                    onEmptyTrash={handleEmptyTrash}
-                />
-            )}
-            {activeTab === 'calendar' && <CalendarView 
-              posts={scheduledPosts} 
-              onAddClick={(date) => {
-                 // Future: Pre-select this date in CreateStudio
-                 setActiveTab('create');
-                 // Optional: alert(`Create for ${date}`);
-              }}
-            />}
-            {activeTab === 'inbox' && <SocialInbox 
-                pageId={metaPageId} 
-                accessToken={metaPageAccessToken || metaAccessToken} 
-                pageName={metaPageName}
-                instagramId={metaInstagramId}
-            />}
-            {activeTab === 'listening' && <SocialListening pageId={metaPageId} accessToken={metaPageAccessToken || metaAccessToken} pageName={metaPageName} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
-            {activeTab === 'training' && <BrandVoiceTrainer />}
-            {activeTab === 'analytics' && <AnalyticsDashboard pageId={settings?.meta_page_id} accessToken={settings?.meta_page_access_token || settings?.meta_access_token} pageName={settings?.meta_page_name} instagramId={metaInstagramId} setActiveTab={setActiveTab} />}
-            {activeTab === 'settings' && <SettingsView 
-              apiKey={apiKey} setApiKey={setApiKey}
-              metaAppId={metaAppId} setMetaAppId={setMetaAppId}
-              metaAppSecret={metaAppSecret} setMetaAppSecret={setMetaAppSecret}
-              metaAccessToken={metaAccessToken} setMetaAccessToken={setMetaAccessToken}
-              metaPageId={metaPageId} setMetaPageId={setMetaPageId}
-              tiktokKey={tiktokKey} setTiktokKey={setTiktokKey}
-              tiktokSecret={tiktokSecret} setTiktokSecret={setTiktokSecret}
-              setMetaPageName={setMetaPageName} // Passed here!
-              metaPageAccessToken={metaPageAccessToken} setMetaPageAccessToken={setMetaPageAccessToken}
-              metaInstagramId={metaInstagramId} setMetaInstagramId={setMetaInstagramId}
-              knowledgeBase={knowledgeBase} setKnowledgeBase={setKnowledgeBase}
-              saveField={saveField}
-            />}
-            {activeTab === 'products' && <ProductManager onRelaunch={handleProductRelaunch} />}
-            {activeTab === 'trends' && (
-              <div className="h-full flex flex-col items-center justify-center text-center opacity-50 space-y-4">
-                <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center">
-                  <LayoutDashboard size={40} className="text-slate-600" />
+        {/* Modals & Overlays */}
+        {showSuccess && (
+            <div className="fixed bottom-10 right-10 bg-emerald-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-bounce z-50">
+                <div className="p-2 bg-white/20 rounded-full">
+                    <CheckCircle2 size={24} />
                 </div>
-                <h2 className="text-3xl font-bold text-slate-700">Próximamente</h2>
-                <p className="text-slate-500">Estamos cocinando algo especial para la sección {activeTab}.</p>
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
-    </div>
+                <div>
+                    <h4 className="font-bold text-lg">¡Publicado!</h4>
+                    <p className="text-emerald-100 text-sm">Tu contenido está en el aire.</p>
+                </div>
+            </div>
+        )}
+        
+        {/* Auth Redirect Modal */}
+        {isAuthRedirect && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-700 p-8 rounded-3xl max-w-md w-full text-center">
+                    <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Key className="text-amber-500" size={32} />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Conexión Manual Requerida</h3>
+                    <p className="text-slate-400 mb-6">
+                        Detectamos un token, pero faltan las credenciales de la App (ID/Secret). 
+                        Por favor agrégalas en Configuración.
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                        <button 
+                            onClick={() => { setIsAuthRedirect(false); setActiveTab('settings'); }}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-bold transition-all"
+                        >
+                            Ir a Configuración
+                        </button>
+                        <button 
+                            onClick={() => setIsAuthRedirect(false)}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-6 py-2 rounded-xl font-bold transition-all"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+    </MainLayout>
   );
 };
 
