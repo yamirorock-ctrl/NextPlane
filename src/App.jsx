@@ -741,6 +741,10 @@ const AppContent = () => {
             <Dashboard 
                 posts={scheduledPosts} 
                 stats={pageStats}
+                onNewPost={() => {
+                    setSelectedProduct(null); // Reset selection
+                    setActiveTab('create');
+                }}
                 onRelaunch={handleRelaunch}
                 onDelete={handleSoftDelete}
                 onRestore={handleRestore}

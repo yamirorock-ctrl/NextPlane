@@ -54,7 +54,7 @@ const QuickAction = ({ icon: Icon, label, desc, onClick, colorClass }) => (
     </button>
 );
 
-const Dashboard = ({ posts, stats, onRelaunch, onDelete, onRestore, onEmptyTrash, onViewChange }) => {
+const Dashboard = ({ posts, stats, onNewPost, onRelaunch, onDelete, onRestore, onEmptyTrash, onViewChange }) => {
   const [view, setView] = useState('active'); // 'active' | 'trash'
   const activePosts = posts.filter(p => !p.deleted_at);
   const trashPosts = posts.filter(p => p.deleted_at);
@@ -127,7 +127,10 @@ const Dashboard = ({ posts, stats, onRelaunch, onDelete, onRestore, onEmptyTrash
                 color="bg-emerald-500"
             />
             {/* Quick Action in Grid */}
-            <button className="glass-card p-6 flex flex-col items-center justify-center gap-3 border-dashed border-slate-700/50 hover:border-indigo-500/50 hover:bg-slate-800/60 transition-all group cursor-pointer text-center">
+            <button 
+                onClick={onNewPost}
+                className="glass-card p-6 flex flex-col items-center justify-center gap-3 border-dashed border-slate-700/50 hover:border-indigo-500/50 hover:bg-slate-800/60 transition-all group cursor-pointer text-center"
+            >
                 <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Plus size={20} className="text-indigo-400" />
                 </div>

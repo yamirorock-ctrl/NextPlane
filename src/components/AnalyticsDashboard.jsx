@@ -102,6 +102,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                 // Process IG (Merge)
                 if(igRes) {
                     totalFans += (igRes.followers || 0);
+                    totalReach += (igRes.impressions || 0); // Add IG Impressions to total
 
                     if (igRes.chartData && igRes.chartData.length > 0) {
                         if (mergedChart.length === 0) {
