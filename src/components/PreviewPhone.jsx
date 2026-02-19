@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
     Pause, Play, VolumeX, Volume2, ChevronLeft, ChevronRight, Image as ImageIcon, Heart, MessageCircle, Share2, Music
 } from 'lucide-react';
+import MediaPreview from './MediaPreview';
 
 const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChange }) => {
   const isVideoMode = contentType === 'video';
@@ -19,9 +20,7 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
 
   // Notify parent of slide change
   useEffect(() => {
-     if (onSlideChange) {
-        onSlideChange(currentSlide);
-     }
+     if (onSlideChange) onSlideChange(currentSlide);
   }, [currentSlide, onSlideChange]);
 
   // Auto-advance slideshow
@@ -39,214 +38,145 @@ const PreviewPhone = ({ contentType, content, product, audio, hooks, onSlideChan
   
   // Get current media
   const currentMedia = slides[currentSlide];
-  const isVideo = currentMedia?.endsWith('.mp4') || currentMedia?.endsWith('.webm') || (slides.length === 1 && product?.type === 'video');
+  
+  // Magic Check: content is video if file extension says so OR if we are in Video Mode with only 1 image (Ken Burns)
+  const isRealVideoFile = currentMedia?.match(/\.(mp4|webm|mov|ogg)$/i);
+  const isArtificialVideo = isVideoMode && !isRealVideoFile; 
 
   return (
-    <div className="mx-auto w-[280px] h-[620px] bg-black rounded-[40px] overflow-hidden border-8 border-slate-900 shadow-2xl relative transition-all duration-300 ring-1 ring-slate-800">
-      {/* Controls Overlay (Only if multiple slides) */}
-      <div className="absolute top-12 right-2 z-40 flex flex-col gap-2">
-         {slides.length > 1 && (
-            <button 
-              onClick={() => setIsAutoPlay(!isAutoPlay)}
-              className={`p-1.5 rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10 ${isAutoPlay ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-white text-slate-900 hover:bg-slate-200'}`}
-              title={isAutoPlay ? "Pausar Carrusel" : "Reproducir Carrusel"}
-            >
-              {isAutoPlay ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
-            </button>
-         )}
-         {isVideo && (
-            <button 
-              onClick={() => setIsMuted(!isMuted)}
-              className={`p-1.5 rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10 ${!isMuted ? 'bg-white text-slate-900' : 'bg-black/50 text-white'}`}
-              title={isMuted ? "Activar Sonido" : "Silenciar"}
-            >
-              {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
-            </button>
-         )}
-      </div>
-
-      {/* Manual Navigation Areas (Invisible tap zones) */}
-      {slides.length > 1 && !isAutoPlay && (
-         <>
-            <div className="absolute top-1/2 left-0 w-12 h-24 -translate-y-1/2 z-30 flex items-center justify-start pl-1 opacity-0 hover:opacity-100 transition-opacity cursor-pointer" onClick={prevSlide}>
-               <div className="bg-black/20 backdrop-blur rounded-r-lg p-1"><ChevronLeft size={20} className="text-white"/></div>
-            </div>
-            <div className="absolute top-1/2 right-0 w-12 h-24 -translate-y-1/2 z-30 flex items-center justify-end pr-1 opacity-0 hover:opacity-100 transition-opacity cursor-pointer" onClick={nextSlide}>
-              <div className="bg-black/20 backdrop-blur rounded-l-lg p-1"><ChevronRight size={20} className="text-white"/></div>
-            </div>
-         </>
-      )}
-
-      {/* Dynamic Island imitation */}
-      <div className="absolute top-2 w-full z-30 flex justify-center">
-         <div className="w-[80px] h-[24px] bg-black rounded-full flex items-center justify-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-indigo-900/50"></div>
+    <div className="mx-auto w-[280px] h-[600px] bg-black rounded-[40px] overflow-hidden border-[6px] border-slate-900 shadow-2xl relative transition-all duration-300 ring-1 ring-slate-800 z-10">
+      
+      {/* Dynamic Island */}
+      <div className="absolute top-2 w-full z-30 flex justify-center pointer-events-none">
+         <div className="w-[80px] h-[22px] bg-black rounded-full flex items-center justify-center gap-2">
+            <div className="w-1 h-1 rounded-full bg-indigo-900/50"></div>
          </div>
       </div>
-      
-      <div className={`w-full h-full relative ${isVideoMode ? (product?.imageColor?.replace('/20', '') || 'bg-slate-800') : 'bg-slate-50'} flex flex-col transition-all duration-500`}>
+
+      {/* Main Screen Content */}
+      <div className={`w-full h-full relative ${isVideoMode ? 'bg-black' : 'bg-white'} flex flex-col`}>
         
+        {/* TikTok/Reels Header Overlay */}
         {isVideoMode && (
-          <div className="absolute top-10 left-0 w-full px-4 flex justify-between z-10 text-white/90">
-            <span className="text-xs font-bold shadow-sm backdrop-blur-sm px-2 py-0.5 rounded-full bg-black/20">Live</span>
+          <div className="absolute top-12 left-0 w-full px-4 flex justify-between z-20 text-white/90 pointer-events-none">
+            <span className="text-[10px] font-bold shadow-sm backdrop-blur-sm px-2 py-0.5 rounded-full bg-black/20">Live</span>
             <div className="flex gap-4 text-xs font-medium shadow-sm">
-              <span className="opacity-60 text-white hover:opacity-100">Siguiendo</span>
-              <span className="font-bold text-white border-b-2 border-white pb-1">Para ti</span>
+              <span className="opacity-60 text-white">Siguiendo</span>
+              <span className="font-bold text-white border-b-2 border-white pb-0.5">Para ti</span>
             </div>
             <span className="w-4"></span>
           </div>
         )}
 
+        {/* Media Container */}
         {isVideoMode ? (
-          <div className="flex-1 flex items-center justify-center bg-black relative">
-            {product && currentMedia ? (
-              isVideo ? (
-                <div className="absolute inset-0 z-0 animate-in fade-in duration-500" key={currentMedia}>
-                  <video 
-                    src={currentMedia} 
-                    className="w-full h-full object-cover"
-                    autoPlay
-                    loop
-                    muted={isMuted}
-                    playsInline
-                  />
-                   <div className="absolute inset-0 bg-black/20 z-10" />
-                   <div className="relative z-20 pt-32 px-4 text-center">
-                    <h2 className="text-4xl font-black text-white leading-none uppercase drop-shadow-2xl tracking-tighter mb-4 shadow-black">{product.name}</h2>
-                  </div>
-                </div>
-              ) : (
-                // Fallback for when "video" mode is on but product is an image (static video background)
-                <div className="absolute inset-0 z-0 animate-in fade-in duration-500" key={currentMedia}>
-                  <div className="absolute inset-0 bg-black/40 z-10" />
-                  <img 
-                    src={currentMedia} 
-                    alt={product.name} 
-                    className="w-full h-full object-cover animate-ken-burns"
-                  />
-                  <div className="relative z-20 pt-32 px-4 text-center">
-                    <h2 className="text-4xl font-black text-white leading-none uppercase drop-shadow-2xl tracking-tighter mb-4 shadow-black">{product.name}</h2>
-                    <div className="bg-white/90 text-black px-4 py-2 rounded-full font-bold shadow-2xl inline-block transform hover:scale-105 transition-transform">
-                      Solo ${product.price}
+            // VIDEO MODE (TikTok Style)
+            <div className="flex-1 relative bg-black">
+                {product && currentMedia ? (
+                    <MediaPreview 
+                        src={currentMedia} 
+                        className="w-full h-full object-cover"
+                        animate={isArtificialVideo} // Trigger Ken Burns if artificial
+                        overlayText={hooks} // Pass hook for overlay animation
+                    />
+                ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
+                        <ImageIcon size={32} className="opacity-50 mb-2"/>
+                        <p className="text-xs">Selecciona contenido</p>
                     </div>
-                  </div>
+                )}
+                
+                {/* Right Action Bar */}
+                <div className="absolute right-2 bottom-20 flex flex-col gap-4 items-center z-20">
+                     <div className="w-10 h-10 rounded-full border border-white p-0.5 overflow-hidden bg-slate-800">
+                         <div className="w-full h-full bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full"></div>
+                     </div>
+                     {[
+                         { icon: Heart, label: "12.5K", fill: true },
+                         { icon: MessageCircle, label: "480", fill: false },
+                         { icon: Share2, label: "Share", fill: false }
+                     ].map((action, i) => (
+                         <div key={i} className="flex flex-col items-center gap-1 drop-shadow-md">
+                             <action.icon size={26} className="text-white" fill={action.fill ? "white" : "rgba(255,255,255,0.2)"} />
+                             <span className="text-[10px] text-white font-bold">{action.label}</span>
+                         </div>
+                     ))}
+                     <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700/50 flex items-center justify-center animate-spin-slow mt-2">
+                         <Music size={14} className="text-white"/>
+                     </div>
                 </div>
-              )
-            ) : (
-              <p className="text-white/50 font-medium">Selecciona producto...</p>
-            )}
-            
-            {/* Carousel Indicators for Video Mode */}
-            {slides.length > 1 && (
-               <div className="absolute bottom-32 w-full flex justify-center gap-1.5 z-20">
-                  {slides.map((_, idx) => (
-                    <div key={idx} className={`h-1.5 rounded-full transition-all ${currentSlide === idx ? 'w-4 bg-white' : 'w-1.5 bg-white/40'}`} />
-                  ))}
-               </div>
-            )}
 
-            {hooks && (
-              <div className="absolute top-24 w-full px-4 animate-in slide-in-from-top-4 duration-500">
-                <div className="bg-red-600/90 backdrop-blur text-white text-sm font-bold py-2 px-4 rounded-lg shadow-xl transform rotate-1 inline-block border border-white/20">
-                  {hooks}
+                {/* Bottom Info Overlay */}
+                <div className="absolute bottom-0 w-full p-4 pb-8 bg-gradient-to-t from-black via-black/40 to-transparent z-20 text-left">
+                    <p className="font-bold text-white text-sm mb-1 text-shadow">@tutienda.oficial</p>
+                    <p className="text-white/90 text-[11px] leading-snug line-clamp-3 pr-10 mb-2 font-medium">
+                        {content || "Escribe un copy genial..."} <span className="font-bold">#viral #tendencia</span>
+                    </p>
+                    {audio && (
+                        <div className="flex items-center gap-2 mt-1 opacity-80">
+                            <Music size={10} className="text-white" /> 
+                            <span className="text-[10px] text-white animate-marquee whitespace-nowrap overflow-hidden w-40">{audio}</span>
+                        </div>
+                    )}
                 </div>
-              </div>
-            )}
-          </div>
+            </div>
         ) : (
-          <div className="flex-1 flex flex-col pt-12 overflow-y-auto no-scrollbar bg-white">
-            <div className="flex items-center justify-between px-4 mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold">V</div>
-                <span className="text-xs font-bold text-gray-900">Next Plane.Oficial</span>
-              </div>
-              <span className="text-gray-400 font-bold">•••</span>
-            </div>
-            
-            {/* Carousel Container for Photo Mode */}
-            <div className={`w-full aspect-square bg-gray-100 flex items-center justify-center mb-3 relative overflow-hidden group`}>
-               {product && currentMedia ? (
-                 isVideo ? (
-                    <video src={currentMedia} className="w-full h-full object-cover" muted autoPlay loop playsInline />
-                 ) : (
-                    <img src={currentMedia} alt={product.name} className="w-full h-full object-cover" />
-                 )
-               ) : (
-                 <div className="text-center z-10">
-                    <ImageIcon size={48} className="text-gray-400 mx-auto mb-2" />
-                    <p className="font-bold text-gray-600">{product?.name || "Producto"}</p>
-                 </div>
-               )}
-               
-               {/* Photo Mode Dots */}
-               {slides.length > 1 && (
-                 <div className="absolute bottom-2 w-full flex justify-center gap-1.5 z-10">
-                    {slides.map((_, idx) => (
-                      <div key={idx} className={`h-1.5 rounded-full transition-all shadow-sm ${currentSlide === idx ? 'w-4 bg-indigo-500' : 'w-1.5 bg-white/60'}`} />
-                    ))}
-                 </div>
-               )}
-            </div>
-
-            <div className="px-4 mb-3 flex gap-4 text-gray-800">
-               <Heart size={22} className="hover:text-red-500 transition-colors" />
-               <MessageCircle size={22} className="hover:text-blue-500 transition-colors" />
-               <Share2 size={22} className="hover:text-green-500 transition-colors" />
-            </div>
-            
-            {/* Scrollable Text Area for Photo Mode */}
-            <div className="px-4 pb-4 overflow-y-auto max-h-[220px] custom-scrollbar">
-               <p className="text-xs font-bold mb-1">1,240 Me gusta</p>
-               <p className="text-xs text-gray-800 leading-snug">
-                 <span className="font-bold mr-1">Next Plane.Oficial</span>
-                 {hooks && <span className="font-semibold block mb-1">{hooks}</span>}
-                 {content || "Escribe tu copy..."} <span className="text-indigo-600">#viral #tienda</span>
-               </p>
-            </div>
-          </div>
-        )}
-
-        {isVideoMode && (
-          <div className="absolute bottom-24 right-2 flex flex-col gap-5 items-center z-10">
-            <div className="w-10 h-10 bg-gray-200 rounded-full border-2 border-white overflow-hidden shadow-lg">
-               <div className="w-full h-full bg-linear-to-tr from-indigo-500 to-purple-600"></div>
-            </div>
-            <div className="flex flex-col items-center gap-1 drop-shadow-md">
-              <Heart size={30} className="text-white fill-white transition-transform active:scale-75" />
-              <span className="text-[10px] text-white font-bold">12.5K</span>
-            </div>
-            <div className="flex flex-col items-center gap-1 drop-shadow-md">
-              <MessageCircle size={28} className="text-white fill-white/10" />
-              <span className="text-[10px] text-white font-bold">482</span>
-            </div>
-            <div className="flex flex-col items-center gap-1 drop-shadow-md">
-              <Share2 size={28} className="text-white fill-white/10" />
-              <span className="text-[10px] text-white font-bold">Share</span>
-            </div>
-          </div>
-        )}
-
-        {isVideoMode && (
-          <div className=" absolute bottom-0 w-full p-4 bg-linear-to-t from-black via-black/60 to-transparent pt-16 z-10 text-white text-left">
-            <div className="flex items-center gap-2 mb-2">
-               <p className="font-bold text-sm text-shadow-sm">@NextPlane.Oficial</p>
-               <span className="bg-indigo-500 text-white text-[9px] font-bold px-1 rounded-sm">SEGUIR</span>
-            </div>
-            <p className="text-xs leading-snug pr-12 line-clamp-4 opacity-90 mb-3 overflow-y-auto max-h-[100px] no-scrollbar">
-              {content || "Escribe tu copy..."} <span className="font-bold">#viral #tienda</span>
-            </p>
-            {audio && (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin-slow bg-slate-900 rounded-full p-1 border border-white/20">
-                  <Music size={10} />
+            // PHOTO MODE (Instagram Feed Style)
+            <div className="flex-1 flex flex-col pt-10 overflow-y-auto no-scrollbar bg-white">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
+                   <div className="flex items-center gap-2">
+                       <div className="w-7 h-7 bg-gradient-to-tr from-yellow-400 to-red-500 rounded-full p-[1.5px]">
+                           <div className="w-full h-full bg-white rounded-full border border-white overflow-hidden">
+                                <div className="w-full h-full bg-slate-200"></div>
+                           </div>
+                       </div>
+                       <span className="text-xs font-bold text-slate-900">tutienda</span>
+                   </div>
+                   <span className="text-black font-bold mb-2">...</span>
                 </div>
-                <div className="flex items-center gap-1 overflow-hidden">
-                   <div className="text-xs w-32 truncate opacity-90 animate-marquee whitespace-nowrap">{audio}</div>
+
+                {/* Image */}
+                <div className="aspect-square bg-slate-100 relative overflow-hidden group">
+                     {product && currentMedia ? (
+                         <MediaPreview src={currentMedia} className="w-full h-full object-cover" />
+                     ) : (
+                         <div className="w-full h-full flex items-center justify-center text-slate-300">
+                             <ImageIcon size={40} />
+                         </div>
+                     )}
+                     
+                     {/* Dots */}
+                     {slides.length > 1 && (
+                         <div className="absolute bottom-3 w-full flex justify-center gap-1">
+                             {slides.map((_, i) => (
+                                 <div key={i} className={`h-1.5 rounded-full transition-all ${currentSlide === i ? 'w-1.5 bg-blue-500' : 'w-1.5 bg-white/60'}`} />
+                             ))}
+                         </div>
+                     )}
                 </div>
-              </div>
-            )}
-          </div>
+
+                {/* Actions */}
+                <div className="px-3 py-2 flex justify-between items-center">
+                    <div className="flex gap-3">
+                        <Heart size={22} className="text-black hover:text-red-500" />
+                        <MessageCircle size={22} className="text-black -rotate-90" />
+                        <Share2 size={22} className="text-black" />
+                    </div>
+                </div>
+
+                {/* Caption */}
+                <div className="px-3 pb-4">
+                    <p className="text-xs font-bold text-slate-900 mb-1">1,204 Me gusta</p>
+                    <p className="text-xs text-slate-800 leading-snug">
+                        <span className="font-bold mr-1">tutienda</span>
+                        {content || "..."}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-1 uppercase">Hace 2 horas</p>
+                </div>
+            </div>
         )}
+
       </div>
     </div>
   );
