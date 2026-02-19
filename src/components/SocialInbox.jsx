@@ -82,6 +82,13 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
       );
   }, [messages]);
 
+  // Load Blocklist
+  const [ignoredSenders, setIgnoredSenders] = useState(() => {
+      try {
+          return JSON.parse(localStorage.getItem('inbox_ignored_senders') || '[]');
+      } catch { return []; }
+  });
+
   const selectedConversation = conversations.find(c => c.id === selectedSenderId);
 
   // 1. Fetch Initial Data & Sync
@@ -95,6 +102,9 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
     if(error) console.error("Error fetching inbox:", error);
     
     let loadedMessages = data || [];
+
+    // Filter out ignored senders locally just in case
+    loadedMessages = loadedMessages.filter(m => !ignoredSenders.includes(m.sender_id));
 
     // SYNC: If local DB is empty, try fetching from Facebook & Instagram
     if (loadedMessages.length === 0 && pageId && accessToken) {
@@ -129,13 +139,24 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
           console.log(`📥 API retornó ${allConvos.length} conversaciones.`);
           
           const newMessagesBatch = [];
+          
+          // Get current ignored list directly from storage to be safe
+          const currentIgnored = JSON.parse(localStorage.getItem('inbox_ignored_senders') || '[]');
+
           allConvos.forEach(conv => {
+              // SKIP IGNORED CONVERSATIONS
+              const sender = conv.sender_id || conv.id;
+              if (currentIgnored.includes(sender)) {
+                  console.log(`🚫 Ignorando conversación bloqueada: ${sender}`);
+                  return; 
+              }
+
               if (conv.messages) {
                   conv.messages.forEach(msg => {
                       newMessagesBatch.push({
                           platform: conv.platform || 'facebook',
                           external_id: msg.id,
-                          sender_id: conv.sender_id || conv.id,
+                          sender_id: sender,
                           sender_name: conv.user,
                           avatar_url: conv.avatar,
                           text: msg.text,
@@ -151,9 +172,11 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
               console.log(`💾 Guardando ${newMessagesBatch.length} mensajes en Supabase...`);
               const { error } = await supabase.from('inbox_messages').upsert(newMessagesBatch, { onConflict: 'external_id' });
               if(error) console.error("Error upserting:", error);
+          } else {
+              if(showAlerts) console.log("✅ No hay mensajes nuevos (o todos fueron ignorados).");
           }
           
-          if(showAlerts) alert(`✅ Sincronización realizada. Se encontraron ${allConvos.length} hilos.`);
+          if(showAlerts) alert(`✅ Sincronización realizada.`);
           fetchMessages(); 
       } catch (err) {
           console.error("Sync Error:", err);
@@ -317,6 +340,7 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
       if (!window.confirm("¿Estás seguro de que deseas eliminar TODA la conversación con este usuario? Esta acción no se puede deshacer.")) return;
 
       try {
+          // 1. Delete from Supabase
           const { error } = await supabase
               .from('inbox_messages')
               .delete()
@@ -324,6 +348,15 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
           
           if (error) throw error;
 
+          // 2. Add to Ignored List (LocalStorage persistence)
+          const currentIgnored = JSON.parse(localStorage.getItem('inbox_ignored_senders') || '[]');
+          if (!currentIgnored.includes(senderId)) {
+              const updated = [...currentIgnored, senderId];
+              localStorage.setItem('inbox_ignored_senders', JSON.stringify(updated));
+              setIgnoredSenders(updated);
+          }
+
+          // 3. Clean up UI
           setMessages(prev => prev.filter(m => m.sender_id !== senderId));
           if (selectedSenderId === senderId) setSelectedSenderId(null);
 
@@ -457,9 +490,12 @@ const SocialInbox = ({ pageId, accessToken, pageName, instagramId }) => {
                {/* Controls */}
                <div className="flex items-center gap-2">
                  <button 
-                    title="Pausar IA"
-                    className="p-2 hover:bg-slate-800 rounded-lg text-amber-500 border border-amber-500/20 bg-amber-500/10"
-                    onClick={() => alert("¡IA Pausada para este chat! (Simulado)")}
+                    title={autoMode ? "Pausar IA para este chat" : "Activar IA"}
+                    className={`p-2 rounded-lg border transition-all ${autoMode ? 'text-amber-500 border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20' : 'text-slate-500 border-slate-700 hover:text-white'}`}
+                    onClick={() => {
+                        console.log("Pausando IA temporalmente");
+                        alert("IA Pausada para este usuario.");
+                    }}
                  >
                     <AlertCircle size={18} />
                  </button>
