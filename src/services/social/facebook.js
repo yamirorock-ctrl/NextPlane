@@ -279,67 +279,93 @@ export const facebookService = {
     }
   },
 
-  // NEW: Fetch Conversations for Inbox
+  // NEW: Fetch Conversations for Inbox (Unified)
   getConversations: async (
     pageId,
     accessToken,
     platform = "facebook",
     instagramId = null,
   ) => {
-    if (!pageId || !accessToken) return [];
-
-    const appSecret = localStorage.getItem("meta_app_secret");
-    const proof = await generateAppSecretProof(accessToken, appSecret);
-    const proofParam = proof ? `&appsecret_proof=${proof}` : "";
-
-    // Important: For Instagram, the 'self' ID in participants is the Instagram ID, not the Page ID.
-    const selfId = platform === "instagram" ? instagramId : pageId;
-
-    // Fetch conversations (DMs)
-    const platformParam = platform === "instagram" ? "&platform=instagram" : "";
-    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=participants,snippet,updated_time,unread_count,messages.limit(100){id,message,from,created_time}&limit=100&access_token=${accessToken}${proofParam}${platformParam}`;
-
     try {
+      if (!pageId || !accessToken) return [];
+
+      let endpoint, fields;
+      const selfId = platform === "instagram" ? instagramId : pageId;
+
+      if (platform === "instagram") {
+        if (!instagramId) {
+          console.warn("Skipping IG Inbox: No Instagram ID provided.");
+          return [];
+        }
+        // Instagram Direct
+        fields =
+          "participants,messages.limit(20){id,message,from,created_time},unread_count,updated_time";
+        endpoint = `https://graph.facebook.com/v19.0/${instagramId}/conversations?fields=${fields}&access_token=${accessToken}`;
+      } else {
+        // Facebook Messenger
+        fields =
+          "participants,messages.limit(20){id,message,from,created_time},unread_count,updated_time,snippet";
+        endpoint = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=${fields}&platform=messenger&access_token=${accessToken}`;
+      }
+
       const res = await fetch(endpoint);
       const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
+
+      if (data.error) {
+        console.error(`Error fetching ${platform} conversations:`, data.error);
+        throw data.error;
+      }
+
+      if (!data.data) return [];
 
       return data.data.map((conv) => {
-        // Find the other person (exclude selfId)
+        // Participants handling
         const participants = conv.participants?.data || [];
-        const otherPerson =
-          participants.find((p) => p.id !== selfId) || participants[0];
 
-        // Fallback for preview if snippet is missing
-        const lastMsgObj = conv.messages?.data?.[0];
-        const preview =
-          conv.snippet || lastMsgObj?.message || "(Sin mensaje de texto)";
+        // Find "Them" (not me)
+        // For FB Page, 'me' is pageId. For IG, 'me' is instagramId or business account.
+        let otherPerson;
+        if (platform === "instagram") {
+          // IG participants usually include the business user too.
+          // Usually: [ { username: 'client' }, { username: 'my_business' } ]
+          // We can't rely on IDs matching perfectly sometimes with scoped IDs.
+          // Simple heuristic: Not the one that owns the token (if we knew properties).
+          // Safer: Just take the first one that has a different ID, or index 0 if only 1.
+          otherPerson =
+            participants.find((p) => p.id !== instagramId) || participants[0];
+        } else {
+          // FB: Participants has the user. Page is implied or sometimes listed.
+          otherPerson =
+            participants.find((p) => p.id !== pageId) || participants[0];
+        }
+
+        // Extract Messages
+        const msgs = conv.messages?.data?.reverse() || [];
+        const lastMsg = msgs[msgs.length - 1];
 
         return {
-          id: conv.id,
-          sender_id: otherPerson?.id,
-          user: otherPerson?.name || "Usuario Desconocido",
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(otherPerson?.name || "U")}&background=random`,
-          preview: preview,
-          time: new Date(conv.updated_time).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          timestamp: conv.updated_time,
+          id: conv.id, // Conversation ID
+          sender_id: otherPerson?.id || `unknown_${conv.id}`,
+          sender_name:
+            otherPerson?.name || otherPerson?.username || "Usuario Desconocido",
+          user:
+            otherPerson?.name || otherPerson?.username || "Usuario Desconocido",
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(otherPerson?.name || otherPerson?.username || "U")}&background=random`,
           platform: platform,
-          unread: conv.unread_count > 0,
-          messages:
-            conv.messages?.data?.reverse().map((m) => ({
-              id: m.id,
-              text: m.message,
-              sender: m.from?.id === selfId ? "me" : "them",
-              created_at: m.created_time || conv.updated_time, // Use conversion time if message time is missing
-            })) || [],
+          preview: conv.snippet || lastMsg?.message || "(Adjunto)",
+          updated_time: conv.updated_time,
+          unread_count: conv.unread_count || 0,
+          messages: msgs.map((m) => ({
+            id: m.id,
+            text: m.message,
+            sender: m.from?.id === selfId ? "me" : "them", // Logic to determine 'me' vs 'them'
+            created_at: m.created_time,
+          })),
         };
       });
     } catch (e) {
-      console.error(`Error fetching ${platform} inbox:`, e);
-      throw e;
+      console.error("Inbox Sync Error:", e);
+      return [];
     }
   },
 

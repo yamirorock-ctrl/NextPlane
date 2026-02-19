@@ -13,26 +13,38 @@ const getGreeting = () => {
     return 'Buenas noches';
 };
 
-const StatCard = ({ title, value, subtext, icon: Icon, color, trend }) => (
-    <div className="glass-card p-6 relative overflow-hidden group">
+const StatCard = ({ title, value, subtext, icon: Icon, color, trend, breakdown }) => (
+    <div className="glass-card p-6 relative overflow-hidden group flex flex-col justify-between h-full">
         <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-20 transition-all duration-500 group-hover:scale-110 ${color}`}></div>
-        <div className="relative z-10 flex justify-between items-start">
-            <div>
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
-                    {Icon && <Icon size={14} className="opacity-70" />}
-                    {title}
-                </h3>
-                <p className="text-3xl font-black text-white tracking-tight">{value}</p>
-                <div className="flex items-center gap-2 mt-2">
-                    {trend && (
-                        <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
-                            <TrendingUp size={8} /> {trend}
-                        </span>
-                    )}
-                    <p className="text-xs text-slate-500 font-medium">{subtext}</p>
-                </div>
+        <div className="relative z-10">
+            <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
+                {Icon && <Icon size={14} className="opacity-70" />}
+                {title}
+            </h3>
+            <p className="text-3xl font-black text-white tracking-tight">{value}</p>
+            <div className="flex items-center gap-2 mt-2 mb-2">
+                {trend && (
+                    <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
+                        <TrendingUp size={8} /> {trend}
+                    </span>
+                )}
+                <p className="text-xs text-slate-500 font-medium">{subtext}</p>
             </div>
         </div>
+        
+        {breakdown && (
+             <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-start gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                 <div className="flex items-center gap-1.5" title="Facebook">
+                    <Facebook size={12} className="text-blue-500" />
+                    <span>{new Intl.NumberFormat('es-MX', { notation: "compact" }).format(breakdown.fb || 0)}</span>
+                 </div>
+                 <div className="h-3 w-px bg-white/10"></div>
+                 <div className="flex items-center gap-1.5" title="Instagram">
+                    <Instagram size={12} className="text-pink-500" />
+                    <span>{new Intl.NumberFormat('es-MX', { notation: "compact" }).format(breakdown.ig || 0)}</span>
+                 </div>
+             </div>
+        )}
     </div>
 );
 
@@ -111,6 +123,10 @@ const Dashboard = ({ posts, stats, onNewPost, onRelaunch, onDelete, onRestore, o
                 icon={TrendingUp}
                 color="bg-purple-500"
                 trend={impressions > 0 ? "+Hoy" : "Sin datos"}
+                breakdown={{ 
+                    fb: stats?.breakdown?.fb?.impressions || 0,
+                    ig: stats?.breakdown?.ig?.impressions || 0
+                }}
             />
             <StatCard 
                 title="Engagement" 
@@ -118,6 +134,10 @@ const Dashboard = ({ posts, stats, onNewPost, onRelaunch, onDelete, onRestore, o
                 subtext={`Tasa: ${engagementRate}`}
                 icon={Zap}
                 color="bg-amber-500"
+                breakdown={{ 
+                    fb: stats?.breakdown?.fb?.engagement || 0,
+                    ig: stats?.breakdown?.ig?.reach || 0 // Using Reach as proxy/placeholder or 0 if explicitly wanted strictly engagement
+                }}
             />
             <StatCard 
                 title="Seguidores" 
@@ -125,6 +145,10 @@ const Dashboard = ({ posts, stats, onNewPost, onRelaunch, onDelete, onRestore, o
                 subtext="Comunidad total" 
                 icon={MessageCircle}
                 color="bg-emerald-500"
+                breakdown={{ 
+                    fb: stats?.breakdown?.fb?.followers || stats?.breakdown?.fb?.fan_count || 0,
+                    ig: stats?.breakdown?.ig?.followers || 0
+                }}
             />
             {/* Quick Action in Grid */}
             <button 

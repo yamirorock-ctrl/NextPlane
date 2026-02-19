@@ -4,12 +4,14 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend 
 } from 'recharts';
 import { 
-  TrendingUp, 
+  ArrowUpRight, 
+  ArrowDownRight, 
   Users, 
   Eye, 
   Heart, 
-  ArrowUpRight, 
-  ArrowDownRight 
+  TrendingUp, 
+  Facebook, 
+  Instagram 
 } from 'lucide-react';
 
 const COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b'];
@@ -148,11 +150,13 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                         ig: igCount
                     }
                 }));
+                
+                // Save Raw Data for Filtering
+                setRawData({ fb: fbRes, ig: igRes, merged: mergedChart, mergedReach: totalReach, mergedFans: totalFans });
             })
             .catch(err => {
                 console.error("Analytics Error:", err);
                 if (err.message.includes("190") || err.message.includes("Session is invalid")) {
-                    // alert("⚠️ Tu sesión de Facebook caducó. Por favor reconecta en Configuración."); // Removed redundant alert
                     setMetrics(prev => ({ ...prev, error: err.message }));
                     setIsRealData(true);
                 }
@@ -164,8 +168,59 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
       }
   }, [pageId, accessToken, instagramId]);
 
+  // Filtering Logic
+  const [selectedPlatform, setSelectedPlatform] = React.useState('all');
+  const [rawData, setRawData] = React.useState(null);
+
+  React.useEffect(() => {
+      if(!rawData) return;
+
+      if(selectedPlatform === 'facebook') {
+          const fb = rawData.fb || {};
+          setData(fb.chartData || engagementData);
+          setMetrics(prev => ({
+              ...prev,
+              reach: (fb.chartData?.reduce((acc, curr) => acc + curr.views, 0) || 0).toLocaleString(),
+              fans: (fb.totalFans || fb.followers || 0).toLocaleString(),
+              engagement: (fb.engagement || 0).toLocaleString() // FB specific engagement
+          }));
+      } else if(selectedPlatform === 'instagram') {
+          const ig = rawData.ig || {};
+          // Map IG reach to likes key for chart consistency if needed, but it should be done in service already?
+          // Service returns chartData with 'views' and 'likes' (mapped from reach).
+          setData(ig.chartData || engagementData);
+           setMetrics(prev => ({
+              ...prev,
+              reach: (ig.impressions || 0).toLocaleString(),
+              fans: (ig.followers || 0).toLocaleString(),
+              engagement: "N/A" // IG engagement not totally accurate yet
+          }));
+      } else {
+          // ALL
+          setData(rawData.merged && rawData.merged.length > 0 ? rawData.merged : engagementData);
+          setMetrics(prev => ({
+              ...prev,
+              reach: rawData.mergedReach.toLocaleString(),
+              fans: rawData.mergedFans.toLocaleString(),
+              engagement: ((rawData.fb?.engagement || 0)).toLocaleString() // Combined (mostly FB)
+          }));
+      }
+
+  }, [selectedPlatform, rawData]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative">
+      <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-xl backdrop-blur-sm border border-slate-800">
+         <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <TrendingUp className="text-indigo-400" />
+            Visión General
+         </h2>
+         <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-800">
+             <button onClick={() => setSelectedPlatform('all')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${selectedPlatform==='all' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-slate-400 hover:text-white'}`}>Global</button>
+             <button onClick={() => setSelectedPlatform('facebook')} className={`px-4 py-1.5 rounded-md text-xs font-bold flex items-center gap-2 transition-all ${selectedPlatform==='facebook' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:text-white'}`}><Facebook size={14}/> Facebook</button>
+             <button onClick={() => setSelectedPlatform('instagram')} className={`px-4 py-1.5 rounded-md text-xs font-bold flex items-center gap-2 transition-all ${selectedPlatform==='instagram' ? 'bg-pink-600 text-white shadow-lg shadow-pink-500/25' : 'text-slate-400 hover:text-white'}`}><Instagram size={14}/> Instagram</button>
+         </div>
+      </div>
       {/* ... (Status Banners same as before) */}
       {!isRealData && !loading && (
           <div className="absolute -top-4 left-0 w-full text-center py-1 z-50">

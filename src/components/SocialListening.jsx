@@ -32,7 +32,8 @@ import {
   Pie,
   Cell,
   BarChart,
-  Bar
+  Bar,
+  Legend
 } from 'recharts';
 
 const SENTIMENT_COLORS = {
@@ -83,16 +84,19 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
           // Group by hour
           const h = date.getHours().toString().padStart(2, '0');
           const hourKey = `${h}:00`;
-          hours[hourKey] = (hours[hourKey] || 0) + 1;
+          
+          if(!hours[hourKey]) hours[hourKey] = { time: hourKey, fb: 0, ig: 0, total: 0 };
+          
+          if(m.platform === 'facebook') hours[hourKey].fb++;
+          else if(m.platform === 'instagram') hours[hourKey].ig++;
+          
+          hours[hourKey].total++;
       });
 
       // Fill missing hours or just show active ones
-      const sorted = Object.keys(hours).sort().map(k => ({
-          time: k,
-          mentions: hours[k]
-      }));
+      const sorted = Object.values(hours).sort((a,b) => a.time.localeCompare(b.time));
       
-      return sorted.length > 0 ? sorted : [{time: 'Now', mentions: 0}];
+      return sorted.length > 0 ? sorted : [{time: 'Now', fb: 0, ig: 0, total: 0}];
   }, [mentions]);
 
   // Reply State
@@ -329,9 +333,11 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
                          <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} />
                          <Tooltip 
                             contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                            itemStyle={{ color: '#818cf8' }}
+                            itemStyle={{ color: '#e2e8f0' }}
                          />
-                         <Bar dataKey="mentions" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={40} />
+                         <Legend verticalAlign="top" height={36} iconType="circle" />
+                         <Bar dataKey="fb" stackId="a" name="Facebook" fill="#3b82f6" barSize={40} />
+                         <Bar dataKey="ig" stackId="a" name="Instagram" fill="#ec4899" barSize={40} radius={[4, 4, 0, 0]} />
                        </BarChart>
                      </ResponsiveContainer>
                    </div>
