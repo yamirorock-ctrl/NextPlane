@@ -369,9 +369,31 @@ const CreateStudio = (props) => {
                         </div>
                      </div>
 
-                     {/* Right: Contextual Helper (ViralCoach) */}
-                     <div className="lg:col-span-5 h-full">
-                         <div className="sticky top-0 space-y-6">
+                     {/* Right: Contextual Helper (ViralCoach) & Preview */}
+                     <div className="lg:col-span-5 h-full flex flex-col gap-6">
+                         
+                         {/* 1. REAL-TIME PREVIEW (Sticky) */}
+                         <div className="sticky top-6 z-20 flex justify-center">
+                             <div className="w-[280px] h-[580px] rounded-[3rem] border-8 border-slate-900 bg-black overflow-hidden shadow-2xl relative ring-1 ring-slate-800">
+                                 {/* Dynamic Island */}
+                                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-b-2xl z-50"></div>
+                                 
+                                 <PreviewPhone 
+                                     contentType={contentType}
+                                     content={caption}
+                                     product={selectedProduct}
+                                     // Resolve audio URL: Custom or Trending ID
+                                     audio={customAudioUrl || (trendingAudio.find(a => a.id === audio)?.url)}
+                                     voiceover={voiceoverConfig}
+                                     subtitles={subtitles}
+                                     hooks={[selectedHook || hook]}
+                                     onSlideChange={() => {}}
+                                 />
+                             </div>
+                         </div>
+
+                         {/* 2. Viral Coach (Scrollable below preview) */}
+                         <div className="space-y-6 pb-20">
                             {contentType === 'video' ? (
                                 <VideoScriptPanel 
                                     strategy={videoScript} 
