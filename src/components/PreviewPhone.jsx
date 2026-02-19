@@ -11,72 +11,107 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
   const [isMuted, setIsMuted] = useState(false); 
   
   // Audio Refs
-  const audioRef = useRef(null);
+  const bgAudioRef = useRef(null);
+  const voiceAudioRef = useRef(null);
 
-  // Handle Background Audio (Music)
+  // --- BACKGROUND MUSIC & DUCKING LOGIC ---
   useEffect(() => {
+      // Initialize BG Audio
       if (!audio) {
-          if (audioRef.current) {
-              audioRef.current.pause();
-              audioRef.current = null;
+          if (bgAudioRef.current) {
+              bgAudioRef.current.pause();
+              bgAudioRef.current = null;
           }
-          return;
-      }
-
-      if (!audioRef.current) {
-          audioRef.current = new Audio(audio);
-          audioRef.current.loop = true;
-      } else if (audioRef.current.src !== audio) {
-          audioRef.current.src = audio;
-      }
-
-      const audioEl = audioRef.current;
-      
-      // Volume Ducking logic
-      if (voiceover) {
-          audioEl.volume = isMuted ? 0 : 0.2; // Lower volume if voiceover exists
       } else {
-          audioEl.volume = isMuted ? 0 : 0.8;
+          if (!bgAudioRef.current) {
+              bgAudioRef.current = new Audio(audio);
+              bgAudioRef.current.loop = true;
+          } else if (bgAudioRef.current.src !== audio) {
+              bgAudioRef.current.src = audio;
+          }
       }
 
-      if (isAutoPlay && !isMuted) {
-          audioEl.play().catch(e => console.log("Autoplay blocked", e));
+      // Initialize Voice Audio (if file type)
+      if (voiceover?.type === 'audio-file' && voiceover.url) {
+           if (!voiceAudioRef.current) {
+               voiceAudioRef.current = new Audio(voiceover.url);
+           } else if (voiceAudioRef.current.src !== voiceover.url) {
+               voiceAudioRef.current.src = voiceover.url;
+           }
       } else {
-          audioEl.pause();
+          // Cleanup if switched to TTS or none
+          if (voiceAudioRef.current) {
+              voiceAudioRef.current.pause();
+              voiceAudioRef.current = null;
+          }
+      }
+
+      const bgEl = bgAudioRef.current;
+      const voiceEl = voiceAudioRef.current;
+
+      // CORE PLAYBACK & DUCKING
+      if (bgEl) {
+          // Ducking: If voiceover exists (Text or File), lower volume
+          // If voiceover is playing, duck more aggresively
+          const hasVoice = !!voiceover; 
+          bgEl.volume = isMuted ? 0 : (hasVoice ? 0.15 : 0.8);
+
+          if (isAutoPlay && !isMuted) {
+              bgEl.play().catch(e => console.log("BG Autoplay blocked", e));
+          } else {
+              bgEl.pause();
+          }
+      }
+
+      if (voiceEl) {
+          voiceEl.volume = isMuted ? 0 : 1.0;
+          // Apply playback rate if available in config (Future feature: Speed control for recorded audio)
+          if (voiceover.rate) voiceEl.playbackRate = voiceover.rate;
+
+          if (isAutoPlay && !isMuted) {
+              if (voiceEl.paused) {
+                  voiceEl.currentTime = 0; // Restart regarding loop or slide? Let's just play.
+                  voiceEl.play().catch(e => console.log("Voice Autoplay blocked", e));
+              }
+          } else {
+              voiceEl.pause();
+          }
       }
 
       return () => {
-          if(!isAutoPlay || isMuted) audioEl.pause();
+          if (!isAutoPlay || isMuted) {
+              if (bgEl) bgEl.pause();
+              if (voiceEl) voiceEl.pause();
+          }
       };
-  }, [audio, isMuted, isAutoPlay, voiceover]);
+  }, [audio, voiceover, isMuted, isAutoPlay]);
 
 
-  // Handle Voiceover (TTS)
+  // --- TTS LOGIC (Text to Speech) ---
   useEffect(() => {
-    // Cancel any ongoing speech when component unmounts
-    return () => window.speechSynthesis.cancel();
-  }, []);
-
-  useEffect(() => {
-    // IMMEDIATE STOP if conditions not met
-    if (!voiceover || isMuted || !isAutoPlay) {
+    // Only run if type is TTS
+    if (voiceover?.type !== 'tts') {
         window.speechSynthesis.cancel();
         return;
     }
 
-    // Small delay to synchronize with video start slightly
-    const timer = setTimeout(() => {
-        // Double check condition inside timeout
-        if (!isAutoPlay || isMuted) return;
+    // IMMEDIATE STOP
+    if (isMuted || !isAutoPlay) {
+        window.speechSynthesis.cancel();
+        return;
+    }
 
+    const timer = setTimeout(() => {
+        if (!isAutoPlay || isMuted) return;
         if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
 
-        // Fallback cleaner if not cleaned upstream
-        const cleanText = voiceover.text.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
+        const cleanText = voiceover.text 
+            ? voiceover.text.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim()
+            : "";
+
+        if(!cleanText) return;
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
-        
-        // Try to find the exact voice again
         const voices = window.speechSynthesis.getVoices();
         const voice = voices.find(v => v.voiceURI === voiceover.voiceURI) || voices.find(v => v.lang === voiceover.lang);
         if (voice) utterance.voice = voice;
@@ -90,11 +125,12 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
 
     return () => {
         clearTimeout(timer);
-        window.speechSynthesis.cancel(); // Stop on effect cleanup
+        window.speechSynthesis.cancel();
     };
   }, [voiceover, isMuted, isAutoPlay, currentSlide]);
 
-  // Normalize slides
+  
+  // --- SLIDESHOW LOGIC ---
   const slides = useMemo(() => {
     if (!product) return [];
     if (product.gallery && product.gallery.length > 0) return product.gallery;
@@ -102,24 +138,19 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
     return [];
   }, [product]);
 
-  // Notify parent of slide change
   useEffect(() => {
      if (onSlideChange) onSlideChange(currentSlide);
   }, [currentSlide, onSlideChange]);
 
-  // Auto-advance slideshow
   useEffect(() => {
     if (slides.length <= 1 || !isAutoPlay) return;
     const interval = setInterval(() => {
       setCurrentSlide(curr => (curr + 1) % slides.length);
-    }, 3000);
+    }, 3500); // Slower slides
     return () => clearInterval(interval);
-  }, [slides, slides.length, isAutoPlay]);
+  }, [slides, isAutoPlay]);
   
-  // Get current media
   const currentMedia = slides[currentSlide];
-  
-  // Magic Check: content is video if file extension says so OR if we are in Video Mode with only 1 image (Ken Burns)
   const isRealVideoFile = currentMedia?.match(/\.(mp4|webm|mov|ogg)$/i);
   const isArtificialVideo = isVideoMode && !isRealVideoFile; 
 
@@ -133,7 +164,7 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
          </div>
       </div>
 
-      {/* Mute Toggle Overlay (Visible on hover or tap) */}
+      {/* Mute Toggle Overlay */}
       <button 
         onClick={() => setIsMuted(prev => !prev)}
         className="absolute top-4 right-4 z-40 w-8 h-8 flex items-center justify-center bg-black/40 backdrop-blur-md rounded-full text-white/80 hover:bg-black/60 transition-colors pointer-events-auto"
@@ -144,7 +175,7 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
       {/* Main Screen Content */}
       <div className={`w-full h-full relative ${isVideoMode ? 'bg-black' : 'bg-white'} flex flex-col`}>
         
-        {/* TikTok/Reels Header Overlay */}
+        {/* TikTok/Reels Overlay */}
         {isVideoMode && (
           <div className="absolute top-12 left-0 w-full px-4 flex justify-between z-20 text-white/90 pointer-events-none">
             <span className="text-[10px] font-bold shadow-sm backdrop-blur-sm px-2 py-0.5 rounded-full bg-black/20">Live</span>
@@ -158,13 +189,12 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
 
         {/* Media Container */}
         {isVideoMode ? (
-            // VIDEO MODE (TikTok Style)
             <div className="flex-1 relative bg-black">
                 {product && currentMedia ? (
                     <MediaPreview 
                         src={currentMedia} 
                         className="w-full h-full object-cover"
-                        animate={isArtificialVideo && isAutoPlay} // Stops animation if paused
+                        animate={isArtificialVideo && isAutoPlay}
                         overlayText={hooks} 
                     />
                 ) : (
@@ -174,6 +204,17 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                     </div>
                 )}
                 
+                {/* Simulated Subtitles (Karaoke-ish) */}
+                {voiceover && !isMuted && isAutoPlay && (
+                    <div className="absolute bottom-32 left-0 w-full px-6 pointer-events-none z-20">
+                        <div className="bg-black/40 backdrop-blur-sm p-3 rounded-xl text-center">
+                             <p className="text-white font-bold text-sm leading-snug drop-shadow-md animate-fade-in">
+                                 {content?.slice(0, 80) || "Escuchando..."}...
+                             </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Play/Pause Center Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
                      {!isAutoPlay && (
@@ -221,9 +262,8 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                 </div>
             </div>
         ) : (
-            // PHOTO MODE (Instagram Feed Style)
+            // PHOTO MODE
             <div className="flex-1 flex flex-col pt-10 overflow-y-auto no-scrollbar bg-white">
-                {/* Header */}
                 <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
                    <div className="flex items-center gap-2">
                        <div className="w-7 h-7 bg-linear-to-tr from-yellow-400 to-red-500 rounded-full p-[1.5px]">
@@ -235,8 +275,6 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                    </div>
                    <span className="text-black font-bold mb-2">...</span>
                 </div>
-
-                {/* Image */}
                 <div className="aspect-square bg-slate-100 relative overflow-hidden group">
                      {product && currentMedia ? (
                          <MediaPreview src={currentMedia} className="w-full h-full object-cover" />
@@ -245,8 +283,6 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                              <ImageIcon size={40} />
                          </div>
                      )}
-                     
-                     {/* Dots */}
                      {slides.length > 1 && (
                          <div className="absolute bottom-3 w-full flex justify-center gap-1">
                              {slides.map((_, i) => (
@@ -255,8 +291,6 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                          </div>
                      )}
                 </div>
-
-                {/* Actions */}
                 <div className="px-3 py-2 flex justify-between items-center">
                     <div className="flex gap-3">
                         <Heart size={22} className="text-black hover:text-red-500" />
@@ -264,8 +298,6 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                         <Share2 size={22} className="text-black" />
                     </div>
                 </div>
-
-                {/* Caption */}
                 <div className="px-3 pb-4">
                     <p className="text-xs font-bold text-slate-900 mb-1">1,204 Me gusta</p>
                     <p className="text-xs text-slate-800 leading-snug">
@@ -276,7 +308,6 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
                 </div>
             </div>
         )}
-
       </div>
     </div>
   );
