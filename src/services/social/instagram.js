@@ -209,20 +209,21 @@ export const instagramService = {
 
       let insightsData = null;
       try {
-        console.log("📸 Trying Valid IG Metrics (Reach, Engaged, Profile)...");
-        // Priority: Reach + Engagement (accounts_engaged) + Profile Views
-        insightsData = await fetchInsights(
-          "reach,accounts_engaged,profile_views",
+        console.log(
+          "📸 Trying Granular IG Metrics (Reach + Likes + Comments)...",
         );
-      } catch (fullErr) {
+        // New Strategy: specific interaction metrics might be allowed even if 'accounts_engaged' is not.
+        // The error message explicitely listed 'likes', 'comments', 'saves' as valid.
+        insightsData = await fetchInsights("reach,likes,comments,saves");
+      } catch (granularErr) {
         console.warn(
-          "⚠️ First IG Metrics attempt failed (" +
-            fullErr.message +
-            "). Retrying with Safer Alternative...",
+          "⚠️ Granular Metrics failed (" +
+            granularErr.message +
+            "). Retrying with Reach + Profile Views...",
         );
         try {
-          // Fallback: Just Reach + Total Interactions (often safer)
-          insightsData = await fetchInsights("reach,total_interactions");
+          // Alternative: Reach + Profile Views (usually safe)
+          insightsData = await fetchInsights("reach,profile_views");
         } catch (basicErr) {
           console.warn("⚠️ Second attempt failed. Retrying REACH ONLY...");
           try {
@@ -255,12 +256,17 @@ export const instagramService = {
         console.log("✅ IG Insights Received:", insightsData);
 
         const impItem = insightsData.data.find((d) => d.name === "impressions");
-        // Note: impItem might be undefined now if we only fetched reach.
-
         const reachItem = insightsData.data.find((d) => d.name === "reach");
 
-        // Try to find engagement metrics if they exist
-        const engItem =
+        // Engagement Components
+        const likesItem = insightsData.data.find((d) => d.name === "likes");
+        const commentsItem = insightsData.data.find(
+          (d) => d.name === "comments",
+        );
+        const savesItem = insightsData.data.find((d) => d.name === "saves");
+
+        // Legacy/Alternative Engagement (Fallback)
+        const engagedItem =
           insightsData.data.find((d) => d.name === "accounts_engaged") ||
           insightsData.data.find((d) => d.name === "total_interactions");
 
@@ -279,7 +285,19 @@ export const instagramService = {
               const rVal = reachItem?.values[i]?.value || 0;
               totalReach += rVal;
 
-              const eVal = engItem?.values[i]?.value || 0;
+              // 2. Engagement Calculation
+              let eVal = 0;
+              if (likesItem || commentsItem || savesItem) {
+                // Sum granular metrics if we have them
+                const l = likesItem?.values[i]?.value || 0;
+                const c = commentsItem?.values[i]?.value || 0;
+                const s = savesItem?.values[i]?.value || 0;
+                eVal = l + c + s;
+              } else {
+                // Fallback to pre-calculated aggregate if granular failing
+                eVal = engagedItem?.values[i]?.value || 0;
+              }
+
               totalEngagement += eVal;
 
               return {
