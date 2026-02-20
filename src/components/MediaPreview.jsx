@@ -3,13 +3,14 @@ import React from 'react';
 const MediaPreview = ({ src, className, alt = "Preview", animate = false, overlayText = null }) => {
   if (!src) return null;
 
-  const isVideo = src.match(/\.(mp4|webm|mov|ogg)$/i) || src.includes('video');
+  const srcString = typeof src === 'string' ? src : (src instanceof File ? URL.createObjectURL(src) : String(src));
+  const isVideo = srcString.match(/\.(mp4|webm|mov|ogg)$/i) || srcString.includes('video');
 
   if (isVideo) {
     return (
       <div className={`relative overflow-hidden ${className}`}>
           <video 
-            src={src} 
+            src={srcString} 
             className="w-full h-full object-cover" 
             muted 
             playsInline
@@ -52,7 +53,7 @@ const MediaPreview = ({ src, className, alt = "Preview", animate = false, overla
   return (
     <div className={`relative overflow-hidden ${className}`}>
         <img 
-            src={src} 
+            src={srcString} 
             alt={alt} 
             className={`w-full h-full object-cover transition-transform duration-10000 ease-linear will-change-transform ${active ? 'scale-135 translate-x-4 translate-y-4' : 'scale-100'}`} 
         />
