@@ -13,7 +13,10 @@ import {
   Package,
   DollarSign,
   Tag,
-  Rocket
+  Rocket,
+  BarChart2,
+  Clock,
+  Sparkles
 } from 'lucide-react';
 
 const ProductManager = ({ onRelaunch }) => {
@@ -40,13 +43,35 @@ const ProductManager = ({ onRelaunch }) => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      // Fetch products AND their related posts to calculate stats
+      // Note: This requires a foreign key from posts.product_id to products.id (which exists)
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select(`
+            *,
+            posts (
+                id,
+                scheduled_date,
+                status
+            )
+        `)
         .order('created_at', { ascending: false });
         
       if (error) throw error;
-      setProducts(data || []);
+      
+      // Process stats
+      const productsWithStats = data.map(p => {
+          const validPosts = p.posts || [];
+          const lastPost = validPosts.sort((a,b) => new Date(b.scheduled_date) - new Date(a.scheduled_date))[0];
+          
+          return {
+              ...p,
+              postCount: validPosts.length,
+              lastPromoted: lastPost ? lastPost.scheduled_date : null
+          };
+      });
+
+      setProducts(productsWithStats || []);
     } catch (e) {
       console.error("Error fetching products:", e);
     } finally {
@@ -79,6 +104,8 @@ const ProductManager = ({ onRelaunch }) => {
     setSaving(true);
     try {
       const productData = {
+        name: formData.name, // Ensure name is saved
+        price: formData.price, // Ensure price is saved
         category: formData.category,
         image_url: formData.image_url,
         link: formData.link
@@ -93,7 +120,8 @@ const ProductManager = ({ onRelaunch }) => {
           .select();
         
         if (error) throw error;
-        setProducts(prev => prev.map(p => p.id === formData.id ? data[0] : p));
+        // Optimization: Don't refetch all, just update local. Keep stats.
+        setProducts(prev => prev.map(p => p.id === formData.id ? { ...p, ...data[0] } : p));
       } else {
         // INSERT
         const { data, error } = await supabase
@@ -102,7 +130,7 @@ const ProductManager = ({ onRelaunch }) => {
           .select();
           
         if (error) throw error;
-        setProducts(prev => [data[0], ...prev]);
+        setProducts(prev => [{...data[0], postCount: 0, lastPromoted: null}, ...prev]);
       }
       setIsDrawerOpen(false);
     } catch (e) {
@@ -139,9 +167,9 @@ const ProductManager = ({ onRelaunch }) => {
       <div className="flex justify-between items-center mb-6">
         <div>
            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-             <Package className="text-indigo-500" /> Inventario
+             <Package className="text-indigo-500" /> Catálogo Maestro
            </h2>
-           <p className="text-slate-400 text-sm">Gestiona tu catálogo de productos.</p>
+           <p className="text-slate-400 text-sm">Tus productos listos para campañas virales.</p>
         </div>
         <button 
           onClick={() => handleOpenDrawer()}
@@ -156,7 +184,7 @@ const ProductManager = ({ onRelaunch }) => {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
         <input 
           type="text" 
-          placeholder="Buscar producto..." 
+          placeholder="Buscar producto por nombre o categoría..." 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
@@ -172,82 +200,94 @@ const ProductManager = ({ onRelaunch }) => {
         ) : filteredProducts.length === 0 ? (
            <div className="text-center py-20 opacity-50">
               <Package size={48} className="mx-auto mb-2" />
-              <p>No hay productos encontrados.</p>
+              <p>No hay productos en tu catálogo.</p>
+              <button onClick={() => handleOpenDrawer()} className="text-indigo-400 font-bold mt-2 hover:underline">¡Agrega el primero!</button>
            </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map(product => (
-              <div key={product.id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden group hover:border-indigo-500/50 transition-all">
-                <div className="aspect-square relative bg-slate-950">
+              <div key={product.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden group hover:border-indigo-500/50 transition-all hover:shadow-xl hover:shadow-indigo-500/10 flex flex-col">
+                <div className="aspect-square relative bg-slate-950 overflow-hidden">
                   {product.image_url ? (
                     product.image_url.match(/\.(mp4|webm|mov)$/i) ? (
                       <video 
                         src={product.image_url} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                        className="w-full h-full object-cover" 
                         muted 
                         loop 
                         onMouseOver={e => e.target.play()}
                         onMouseOut={e => {e.target.pause(); e.target.currentTime = 0;}}
                       />
                     ) : (
-                      <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                     )
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-700">
+                    <div className="w-full h-full flex items-center justify-center text-slate-700 flex-col gap-2">
                       <ImagePlus size={32} />
+                      <span className="text-xs">Sin Imagen</span>
                     </div>
                   )}
-                  {/* Actions Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
-                    <button 
-                      onClick={() => handleOpenDrawer(product)}
-                      className="p-2 bg-white text-slate-900 rounded-lg hover:scale-110 transition-transform"
-                      title="Editar"
-                    >
-                      <Edit2 size={18} />
-                    </button>
+                  
+                  {/* Price Tag */}
+                  <div className="absolute top-3 right-3 px-3 py-1 bg-black/70 backdrop-blur-md rounded-full text-sm font-bold text-white border border-white/10 shadow-lg">
+                    ${product.price}
+                  </div>
+
+                  {/* Quick Actions Overlay */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
                     {onRelaunch && (
                       <button 
                         onClick={() => onRelaunch(product)}
-                        className="p-2 bg-indigo-500 text-white rounded-lg hover:scale-110 transition-transform hover:bg-indigo-400"
-                        title="Re-lanzar en Studio"
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg transform hover:scale-105 transition-all"
+                        title="Crear Post con IA"
                       >
-                         {/* We need Rocket icon, ensure it is imported! It was not in previous import list? Wait, let's check top of file. 
-                             It wasn't imported. I need to add it to imports too if I can.
-                             Ah, I cannot see imports here. I should just use what I have or carefuly re-add import.
-                             I am replacing from line 18, so I miss imports.
-                             Wait, I am replacing lines 18 to 213.
-                             I need to check imports.
-                             Let me update imports first in a separate call or check file again.
-                             I'll assume Rocket is NOT imported and I should use 'Sparkles' or similar if I can't update imports now.
-                             OR I can just do a multi-replace to add import.
-                             Better: Use 'Play' or 'Send' which might be imported... 
-                             Checking Imports: Plus, Search, Edit2, Trash2, X, Save, Loader2, ImagePlus, Package, DollarSign, Tag.
-                             Rocket is NOT imported.
-                             I will add Rocket to imports in a separate replacement or modify this one if possible.
-                             I'll just add Rocket to imports in a previous step? No, I am here.
-                             I will create a separate `multi_replace` for imports and body.
-                         */}
-                         <Rocket size={18} /> 
+                         <Sparkles size={16} /> Crear Post
                       </button>
                     )}
-                    <button 
+                  </div>
+                  
+                  {/* Edit/Delete Small Actions */}
+                  <div className="absolute bottom-3 right-3 flex gap-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                     <button 
+                        onClick={() => handleOpenDrawer(product)}
+                        className="p-2 bg-slate-800 text-slate-300 hover:text-white rounded-lg hover:bg-slate-700"
+                        title="Editar"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                     <button 
                       onClick={() => handleDelete(product.id)}
-                      className="p-2 bg-red-500 text-white rounded-lg hover:scale-110 transition-transform"
+                      className="p-2 bg-slate-800 text-red-400 hover:text-red-300 rounded-lg hover:bg-slate-700"
                       title="Eliminar"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
-                  <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur rounded text-xs font-bold text-white">
-                    ${product.price}
-                  </div>
                 </div>
-                <div className="p-3">
-                  <h3 className="font-bold text-white text-sm truncate">{product.name}</h3>
-                  <p className="text-slate-500 text-xs flex items-center gap-1 mt-1">
-                    <Tag size={10} /> {product.category || 'Sin categoría'}
-                  </p>
+
+                {/* Info & Stats */}
+                <div className="p-4 flex-1 flex flex-col">
+                  <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="font-bold text-white text-base truncate pr-2" title={product.name}>{product.name}</h3>
+                        <p className="text-slate-500 text-xs flex items-center gap-1 mt-0.5">
+                            <Tag size={10} /> {product.category || 'General'}
+                        </p>
+                      </div>
+                  </div>
+                  
+                  <div className="mt-auto pt-4 border-t border-slate-800 grid grid-cols-2 gap-2">
+                     <div className="bg-slate-950 p-2 rounded-lg text-center">
+                        <span className="block text-[10px] text-slate-500 uppercase font-bold mb-1 flex justify-center items-center gap-1"><BarChart2 size={10}/> Posts</span>
+                        <span className="text-white font-mono font-bold">{product.postCount || 0}</span>
+                     </div>
+                     <div className="bg-slate-950 p-2 rounded-lg text-center">
+                        <span className="block text-[10px] text-slate-500 uppercase font-bold mb-1 flex justify-center items-center gap-1"><Clock size={10}/> Última vez</span>
+                        <span className={`text-[10px] font-bold ${product.lastPromoted ? 'text-emerald-400' : 'text-slate-600'}`}>
+                            {product.lastPromoted ? new Date(product.lastPromoted).toLocaleDateString(undefined, {month:'short', day:'numeric'}) : 'Nunca'}
+                        </span>
+                     </div>
+                  </div>
                 </div>
               </div>
             ))}
