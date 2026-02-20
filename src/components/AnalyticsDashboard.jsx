@@ -94,18 +94,22 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                 let mergedChart = [];
                 let totalReach = 0;
                 let totalFans = 0;
+                let totalEngagement = 0; // New accumulator
                 
                 // Process FB
                 if(fbRes && fbRes.chartData) {
                     mergedChart = fbRes.chartData;
-                    totalReach += fbRes.chartData.reduce((acc, curr) => acc + curr.views, 0);
+                    totalReach += fbRes.reach || 0; // Use explicit Reach from service
                     totalFans += fbRes.totalFans;
+                    totalEngagement += fbRes.engagement || 0;
                 }
 
                 // Process IG (Merge)
                 if(igRes) {
                     totalFans += (igRes.followers || 0);
-                    totalReach += (igRes.impressions || 0); // Add IG Impressions to total
+                    // Use Reach if available, else Impressions
+                    totalReach += (igRes.reach || igRes.impressions || 0); 
+                    totalEngagement += (igRes.engagement || 0);
 
                     if (igRes.chartData && igRes.chartData.length > 0) {
                         if (mergedChart.length === 0) {
@@ -118,7 +122,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                                  return {
                                      ...item,
                                      views: item.views + (igItem ? igItem.views : 0),
-                                     likes: item.likes + (igItem ? igItem.likes : 0) // Also merge likes
+                                     likes: item.likes + (igItem ? igItem.likes : 0) // Merge Engagement (likes proxy)
                                  };
                              });
                         }
@@ -145,6 +149,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                     reachChange: "+0%", 
                     fans: totalFans > 0 ? totalFans.toLocaleString() : prev.fans,
                     fansChange: "+0",
+                    engagement: totalEngagement > 0 ? totalEngagement.toLocaleString() : prev.engagement, // Global Engagement
                     breakdown: {
                         fb: fbCount,
                         ig: igCount
@@ -152,7 +157,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
                 }));
                 
                 // Save Raw Data for Filtering
-                setRawData({ fb: fbRes, ig: igRes, merged: mergedChart, mergedReach: totalReach, mergedFans: totalFans });
+                setRawData({ fb: fbRes, ig: igRes, merged: mergedChart, mergedReach: totalReach, mergedFans: totalFans, mergedEngagement: totalEngagement });
             })
             .catch(err => {
                 console.error("Analytics Error:", err);
@@ -180,20 +185,18 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
           setData(fb.chartData || engagementData);
           setMetrics(prev => ({
               ...prev,
-              reach: (fb.chartData?.reduce((acc, curr) => acc + curr.views, 0) || 0).toLocaleString(),
+              reach: (fb.reach || fb.chartData?.reduce((acc, curr) => acc + curr.views, 0) || 0).toLocaleString(),
               fans: (fb.totalFans || fb.followers || 0).toLocaleString(),
-              engagement: (fb.engagement || 0).toLocaleString() // FB specific engagement
+              engagement: (fb.engagement || 0).toLocaleString()
           }));
       } else if(selectedPlatform === 'instagram') {
           const ig = rawData.ig || {};
-          // Map IG reach to likes key for chart consistency if needed, but it should be done in service already?
-          // Service returns chartData with 'views' and 'likes' (mapped from reach).
           setData(ig.chartData || engagementData);
            setMetrics(prev => ({
               ...prev,
-              reach: (ig.impressions || 0).toLocaleString(),
+              reach: (ig.reach || ig.impressions || 0).toLocaleString(),
               fans: (ig.followers || 0).toLocaleString(),
-              engagement: "N/A" // IG engagement not totally accurate yet
+              engagement: (ig.engagement || 0).toLocaleString()
           }));
       } else {
           // ALL
@@ -202,7 +205,7 @@ const AnalyticsDashboard = ({ pageId, accessToken, pageName, instagramId, setAct
               ...prev,
               reach: rawData.mergedReach.toLocaleString(),
               fans: rawData.mergedFans.toLocaleString(),
-              engagement: ((rawData.fb?.engagement || 0)).toLocaleString() // Combined (mostly FB)
+              engagement: rawData.mergedEngagement.toLocaleString()
           }));
       }
 

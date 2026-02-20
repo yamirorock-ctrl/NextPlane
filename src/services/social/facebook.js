@@ -199,86 +199,6 @@ export const facebookService = {
     }
   },
 
-  // NEW: Fetch Page Insights for Analytics
-  getPageInsights: async (pageId, accessToken) => {
-    if (!pageId || !accessToken) return null;
-
-    // Metrics Strategy:
-    // 1. Chart Data: Reach & Engagement from Insights API (Daily)
-    // 2. Total Fans: From Page Object directly (safer than Insights)
-
-    // Retrieve App Secret from storage to sign the request (Fixes 'Bad signature')
-    const appSecret = localStorage.getItem("meta_app_secret");
-    const proof = await generateAppSecretProof(accessToken, appSecret);
-    const proofParam = proof ? `&appsecret_proof=${proof}` : "";
-
-    const insightsUrl = `https://graph.facebook.com/v19.0/${pageId}/insights?metric=page_impressions_unique,page_post_engagements&period=day&date_preset=this_month&access_token=${accessToken}${proofParam}`;
-    // Get total fans directly from Page Node
-    const pageDataUrl = `https://graph.facebook.com/v19.0/${pageId}?fields=fan_count,followers_count&access_token=${accessToken}${proofParam}`;
-
-    try {
-      const [insightsRes, pageRes] = await Promise.allSettled([
-        fetch(insightsUrl),
-        fetch(pageDataUrl),
-      ]);
-
-      let error = null;
-
-      // 1. Process Chart Data
-      let chartData = [];
-      if (insightsRes.status === "fulfilled" && insightsRes.value.ok) {
-        const data = await insightsRes.value.json();
-        const impressions =
-          data.data.find((m) => m.name === "page_impressions_unique")?.values ||
-          [];
-        const engagement =
-          data.data.find((m) => m.name === "page_post_engagements")?.values ||
-          [];
-
-        chartData = impressions
-          .map((imp, idx) => {
-            const date = new Date(imp.end_time);
-            date.setDate(date.getDate() - 1); // Fix: Subtract 1 day because end_time is the end of the period
-            return {
-              name: date.toLocaleDateString("es-ES", {
-                weekday: "short",
-              }),
-              views: imp.value,
-              likes: engagement[idx]?.value || 0,
-            };
-          })
-          .slice(-7);
-      } else {
-        if (insightsRes.status === "fulfilled") {
-          const errBody = await insightsRes.value.json().catch(() => ({}));
-          console.error("❌ FB Insights Error JSON:", errBody);
-          error =
-            (errBody?.error?.message || insightsRes.value.statusText) +
-            (errBody?.error?.code ? ` (Code ${errBody.error.code})` : "");
-        } else {
-          console.error("❌ FB Insights Network Error:", insightsRes.reason);
-          error = insightsRes.reason?.message;
-        }
-      }
-
-      // 2. Process Fans
-      let totalFans = 0;
-      if (pageRes.status === "fulfilled" && pageRes.value.ok) {
-        const pData = await pageRes.value.json();
-        totalFans = pData.followers_count || pData.fan_count || 0;
-      }
-
-      if (error) {
-        throw new Error(error);
-      }
-
-      return { chartData, totalFans };
-    } catch (e) {
-      console.error("Error fetching insights:", e);
-      throw e; // Rethrow so component sees it
-    }
-  },
-
   // NEW: Fetch Conversations for Inbox (Unified)
   getConversations: async (
     pageId,
@@ -589,55 +509,65 @@ export const facebookService = {
     try {
       console.log("📊 Fetching Page Insights (Detailed)...");
 
+      const appSecret = localStorage.getItem("meta_app_secret");
+      const proof = await generateAppSecretProof(accessToken, appSecret);
+      const proofParam = proof ? `&appsecret_proof=${proof}` : "";
+
       // 1. Get Page Profile Data (Followers, Name, Picture)
-      const pageUrl = `https://graph.facebook.com/v19.0/${pageId}?fields=fan_count,new_like_count,followers_count,picture&access_token=${accessToken}`;
+      const pageUrl = `https://graph.facebook.com/v19.0/${pageId}?fields=fan_count,new_like_count,followers_count,picture&access_token=${accessToken}${proofParam}`;
       const pageRes = await fetch(pageUrl);
       const pageData = await pageRes.json();
 
       if (pageData.error) throw pageData.error;
 
-      // 2. Get Insights (Impressions, Engagement - Last 10 Days Daily)
-      const metrics = "page_impressions,page_post_engagements"; // page_fans is lifetime, handled separately
-      const since = Math.floor(Date.now() / 1000) - 10 * 86400; // 10 days ago
-      const insightsUrl = `https://graph.facebook.com/v19.0/${pageId}/insights?metric=${metrics}&period=day&since=${since}&access_token=${accessToken}`;
+      // 2. Get Insights (Recall: page_impressions_unique = Reach, page_post_engagements = Engagement)
+      const metrics = "page_impressions_unique,page_post_engagements";
+      const since = Math.floor(Date.now() / 1000) - 10 * 86400; // 10 days ago (safe buffer)
+      const insightsUrl = `https://graph.facebook.com/v19.0/${pageId}/insights?metric=${metrics}&period=day&since=${since}&access_token=${accessToken}${proofParam}`;
 
       const insightsRes = await fetch(insightsUrl);
       const insightsData = await insightsRes.json();
 
       let chartData = [];
-      let totalImpressions = 0;
+      let totalReach = 0;
       let totalEngagement = 0;
 
       if (insightsData.data) {
-        const impressionsItem = insightsData.data.find(
-          (d) => d.name === "page_impressions",
+        const reachItem = insightsData.data.find(
+          (d) => d.name === "page_impressions_unique",
         );
         const engagementItem = insightsData.data.find(
           (d) => d.name === "page_post_engagements",
         );
 
-        if (impressionsItem && impressionsItem.values) {
-          chartData = impressionsItem.values.map((v, i) => {
-            const date = new Date(v.end_time).toLocaleDateString("es-MX", {
-              weekday: "short",
-            }); // e.g. "lun"
-            const engVal = engagementItem?.values[i]?.value || 0;
+        if (reachItem && reachItem.values) {
+          chartData = reachItem.values
+            .map((v, i) => {
+              const dateObj = new Date(v.end_time);
+              // Insights end_time is usually T07:00:00 or T08:00:00 depending on timezone, representing previous day usually.
+              // Let's format simply.
+              const date = dateObj.toLocaleDateString("es-MX", {
+                weekday: "short",
+              });
 
-            totalImpressions += v.value;
-            totalEngagement += engVal;
+              const engVal = engagementItem?.values[i]?.value || 0;
 
-            return {
-              name: date, // "Lun"
-              views: v.value,
-              likes: engVal, // Using likes as proxy for engagement in chart
-            };
-          });
+              totalReach += v.value;
+              totalEngagement += engVal;
+
+              return {
+                name: date,
+                views: v.value, // Reach
+                likes: engVal, // Engagement
+              };
+            })
+            .slice(-7); // Keep last 7 days
         }
       }
 
       const stats = {
         followers: pageData.followers_count || pageData.fan_count || 0,
-        impressions: totalImpressions,
+        reach: totalReach,
         engagement: totalEngagement,
         picture: pageData.picture?.data?.url,
         chartData: chartData,
@@ -648,7 +578,7 @@ export const facebookService = {
       return stats;
     } catch (e) {
       console.error("Error fetching insights:", e);
-      return null; // Return null so UI handles "no data" gracefully
+      return null;
     }
   },
 

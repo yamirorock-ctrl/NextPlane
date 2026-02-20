@@ -195,7 +195,10 @@ export const instagramService = {
 
       // B. Daily Insights (last 30 days)
       const since = Math.floor(Date.now() / 1000) - 30 * 86400;
-      const insightsUrl = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=impressions,reach&period=day&since=${since}&access_token=${accessToken}`;
+      // Added: profile_views, accounts_engaged (if available, else fallback to total interactions if supported, check API docs).
+      // Note: accounts_engaged is often available for period=day.
+      const metrics = "impressions,reach,profile_views,accounts_engaged";
+      const insightsUrl = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=${metrics}&period=day&since=${since}&access_token=${accessToken}`;
 
       const [userRes, insightsRes] = await Promise.allSettled([
         fetch(userUrl),
@@ -207,6 +210,7 @@ export const instagramService = {
       let chartData = [];
       let totalImpressions = 0;
       let totalReach = 0;
+      let totalEngagement = 0;
 
       // Process User Data
       if (userRes.status === "fulfilled" && userRes.value.ok) {
@@ -221,21 +225,31 @@ export const instagramService = {
         if (data.data) {
           const impItem = data.data.find((d) => d.name === "impressions");
           const reachItem = data.data.find((d) => d.name === "reach");
+          const engItem =
+            data.data.find((d) => d.name === "accounts_engaged") ||
+            data.data.find((d) => d.name === "total_interactions");
 
           if (impItem && impItem.values) {
-            chartData = impItem.values.map((v, i) => {
-              totalImpressions += v.value;
-              const rVal = reachItem?.values[i]?.value || 0;
-              totalReach += rVal;
+            chartData = impItem.values
+              .map((v, i) => {
+                totalImpressions += v.value;
 
-              return {
-                name: new Date(v.end_time).toLocaleDateString("es-MX", {
-                  weekday: "short",
-                }),
-                views: v.value,
-                likes: rVal, // Use 'likes' key for chart compatibility (Reach)
-              };
-            });
+                const rVal = reachItem?.values[i]?.value || 0;
+                totalReach += rVal;
+
+                const eVal = engItem?.values[i]?.value || 0;
+                totalEngagement += eVal;
+
+                return {
+                  name: new Date(v.end_time).toLocaleDateString("es-MX", {
+                    weekday: "short",
+                  }),
+                  views: v.value, // Impressions
+                  likes: eVal, // Engagement (proxied to 'likes' for chart consistency)
+                  reach: rVal, // Actual Reach
+                };
+              })
+              .slice(-7); // Last 7 days to match UI expectations usually
           }
         }
       }
@@ -245,6 +259,7 @@ export const instagramService = {
         picture,
         impressions: totalImpressions,
         reach: totalReach,
+        engagement: totalEngagement,
         chartData,
       };
     } catch (e) {
