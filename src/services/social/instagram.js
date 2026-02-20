@@ -213,9 +213,9 @@ export const instagramService = {
       // 1. Fetch Daily Data (For Chart & Reach)
       try {
         console.log("📸 Fetching IG Daily Metrics (Reach)...");
-        // Standard time-series request
+        // Standard time-series request - REMOVED profile_views as it requires total_value
         const dailyParams = `&period=day&since=${since}`;
-        dailyInsights = await fetchInsights("reach,profile_views", dailyParams);
+        dailyInsights = await fetchInsights("reach", dailyParams);
       } catch (e) {
         console.warn(
           "⚠️ Main IG Reach fetch failed. Retrying Reach-only...",
@@ -231,13 +231,16 @@ export const instagramService = {
         }
       }
 
-      // 2. Fetch Engagement Totals (Likes, Comments)
+      // 2. Fetch Engagement Totals (Likes, Comments, Profile Views)
       try {
-        console.log("📸 Fetching IG Engagement Metrics (Likes, Comments)...");
-        // Specific request for totals as required by API error hints
+        console.log(
+          "📸 Fetching IG Engagement Metrics (Likes, Comments, Views)...",
+        );
+        // Specific request for totals as required by API
         const totalParams = `&metric_type=total_value&period=day&since=${since}`;
+        // Moved profile_views here
         totalInsights = await fetchInsights(
-          "likes,comments,saves",
+          "likes,comments,saves,profile_views",
           totalParams,
         );
       } catch (e) {
@@ -266,9 +269,6 @@ export const instagramService = {
       if (dailyInsights && dailyInsights.data) {
         console.log("✅ IG Daily Data:", dailyInsights);
 
-        const impItem = dailyInsights.data.find(
-          (d) => d.name === "impressions",
-        );
         const reachItem = dailyInsights.data.find((d) => d.name === "reach");
 
         // Engagement Items (from secondary call)
@@ -277,20 +277,21 @@ export const instagramService = {
           (d) => d.name === "comments",
         );
         const savesItem = totalInsights?.data?.find((d) => d.name === "saves");
+        const profileViewsItem = totalInsights?.data?.find(
+          (d) => d.name === "profile_views",
+        );
 
         // KEY FIX: Use reachItem as the base since we know it's from the daily series
-        const baseItem = impItem || reachItem;
-
-        if (baseItem && baseItem.values) {
-          chartData = baseItem.values
+        if (reachItem && reachItem.values) {
+          chartData = reachItem.values
             .map((v, i) => {
-              // If we have impressions, use them. If not, fallback to reach for "Views"
-              const viewsVal = impItem
-                ? v.value
-                : reachItem?.values?.[i]?.value || 0;
-              totalImpressions += viewsVal;
+              // Now that profile_views is a 'total', we can't map it per day easily unless it returns a time series.
+              // If it returns a total (scalar), we just add it to the big total below.
+              // For the chart "Views" axis, we use Reach as the proxy since Views daily data is gone/hard to get.
+              const viewsVal = v.value; // Use Reach for Chart Views
+              totalImpressions += viewsVal; // This variable name is legacy, implies "Views"
 
-              const rVal = reachItem?.values?.[i]?.value || 0;
+              const rVal = v.value;
               totalReach += rVal;
 
               // 2. Engagement Calculation (Daily if available, or just ignore for daily chart)
