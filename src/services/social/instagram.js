@@ -255,16 +255,26 @@ export const instagramService = {
         console.log("✅ IG Insights Received:", insightsData);
 
         const impItem = insightsData.data.find((d) => d.name === "impressions");
+        // Note: impItem might be undefined now if we only fetched reach.
+
         const reachItem = insightsData.data.find((d) => d.name === "reach");
+
         // Try to find engagement metrics if they exist
         const engItem =
           insightsData.data.find((d) => d.name === "accounts_engaged") ||
           insightsData.data.find((d) => d.name === "total_interactions");
 
-        if (impItem && impItem.values) {
-          chartData = impItem.values
+        // KEY FIX: Use reachItem as the base for iteration if impItem is missing
+        const baseItem = impItem || reachItem;
+
+        if (baseItem && baseItem.values) {
+          chartData = baseItem.values
             .map((v, i) => {
-              totalImpressions += v.value;
+              // If we have impressions, use them. If not, fallback to reach for "Views"
+              const viewsVal = impItem
+                ? v.value
+                : reachItem?.values[i]?.value || 0;
+              totalImpressions += viewsVal;
 
               const rVal = reachItem?.values[i]?.value || 0;
               totalReach += rVal;
@@ -276,7 +286,7 @@ export const instagramService = {
                 name: new Date(v.end_time).toLocaleDateString("es-MX", {
                   weekday: "short",
                 }),
-                views: v.value, // Impressions
+                views: viewsVal, // Impressions or Reach
                 likes: eVal, // Engagement (proxied)
                 reach: rVal, // Store Real Reach
               };
