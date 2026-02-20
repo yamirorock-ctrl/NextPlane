@@ -300,11 +300,15 @@ export const facebookService = {
       // Optimized: get posts with nested comments
       const url = `https://graph.facebook.com/v19.0/${pageId}/posts?fields=id,message,created_time,permalink_url,comments.limit(50){id,message,from,created_time,like_count,comment_count}&limit=10&access_token=${accessToken}`;
 
+      console.log(
+        `🔎 Pidiendo Posts FB a: ${pageId} con token (fin): ...${accessToken.slice(-10)}`,
+      );
+
       const response = await fetch(url);
       const data = await response.json();
 
       if (data.error) {
-        console.error("FB Comments API Error:", data.error);
+        console.error("❌ FB Comments API Error:", data.error);
         throw new Error(data.error.message);
       }
 

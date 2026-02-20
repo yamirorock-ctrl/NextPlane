@@ -411,7 +411,12 @@ const AppContent = () => {
                         // 4. Save & Update State
                         setMetaAccessToken(longToken);
                         saveField('meta_access_token', longToken);
-                        alert("✅ ¡Conexión con Facebook Exitosa! Token guardado.");
+                        
+                        // Clear stale page token to force refresh/re-selection
+                        setMetaPageAccessToken(null);
+                        saveField('meta_page_access_token', null);
+
+                        alert("✅ ¡Conexión Exitosa y Actualizada! Por favor, vuelve a seleccionar tu Página en Configuración.");
                         
                         // 5. Clear URL to prevent re-runs
                         window.history.replaceState(null, null, ' ');
