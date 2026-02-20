@@ -95,16 +95,34 @@ const ProductManager = ({ onRelaunch }) => {
       if (error) throw error;
       
       // Map Web Product to App Format
-      const mapped = data.map(p => ({
-          ...p,
-          isWeb: true, // Marker
-          // Ensure fields exist (adjust mapping based on real store schema)
-          name: p.title || p.name,
-          price: p.price || 0,
-          image_url: p.image_url || p.thumbnail || p.image || '', 
-          gallery: p.gallery || p.images || p.media || (p.image_url ? [p.image_url] : []),
-          category: p.category_id || 'Web'
-      }));
+      const mapped = data.map(p => {
+          const rawGallery = p.gallery || p.images || p.media || [];
+          // Ensure gallery items are strings
+          const cleanGallery = Array.isArray(rawGallery) 
+             ? rawGallery.map(item => {
+                 if(typeof item === 'string') return item;
+                 if(typeof item === 'object' && item !== null) {
+                     return item.url || item.src || item.link || item.image || '';
+                 }
+                 return '';
+             }).filter(url => url && url.length > 5)
+             : [];
+          
+          if(cleanGallery.length === 0 && (p.image_url || p.thumbnail || p.image)) {
+              cleanGallery.push(p.image_url || p.thumbnail || p.image);
+          }
+
+          return {
+            ...p,
+            isWeb: true, // Marker
+            // Ensure fields exist (adjust mapping based on real store schema)
+            name: p.title || p.name,
+            price: p.price || 0,
+            image_url: cleanGallery[0] || p.image_url || p.thumbnail || p.image || '', 
+            gallery: cleanGallery,
+            category: p.category_id || 'Web'
+          };
+      });
 
       setWebProducts(mapped || []);
     } catch (e) {
