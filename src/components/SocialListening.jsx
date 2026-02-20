@@ -54,13 +54,23 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
   const [newKeyword, setNewKeyword] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState(null);
+  const [filterActive, setFilterActive] = useState(false);
+
+  // Filter Logic
+  const filteredMentions = React.useMemo(() => {
+     if(!filterActive || keywords.length === 0) return mentions;
+     return mentions.filter(m => 
+        keywords.some(k => m.text.toLowerCase().includes(k.toLowerCase()))
+     );
+  }, [mentions, filterActive, keywords]);
   
-  // Computed Sentiment Data
+  // Computed Sentiment Data (Using Filtered or All? usually All provides context, but let's stick to visible)
   const sentimentData = React.useMemo(() => {
-     if(mentions.length === 0) return SENTIMENT_DATA_DEFAULT;
+     const source = filterActive ? filteredMentions : mentions;
+     if(source.length === 0) return SENTIMENT_DATA_DEFAULT;
      
      const counts = { positive: 0, neutral: 0, negative: 0 };
-     mentions.forEach(m => {
+     source.forEach(m => {
          const s = m.sentiment || 'neutral';
          if(counts[s] !== undefined) counts[s]++;
          else counts.neutral++;
@@ -71,14 +81,15 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
         { name: 'Neutral', value: counts.neutral, color: SENTIMENT_COLORS.neutral },
         { name: 'Negativo', value: counts.negative, color: SENTIMENT_COLORS.negative },
      ];
-  }, [mentions]);
+  }, [mentions, filteredMentions, filterActive]);
 
   // Computed Trend Data (Real)
   const trendData = React.useMemo(() => {
-      if(mentions.length === 0) return [];
+      const source = filterActive ? filteredMentions : mentions;
+      if(source.length === 0) return [];
       
       const hours = {};
-      mentions.forEach(m => {
+      source.forEach(m => {
           if(!m.timestamp) return;
           const date = new Date(m.timestamp);
           // Group by hour
@@ -97,12 +108,19 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
       const sorted = Object.values(hours).sort((a,b) => a.time.localeCompare(b.time));
       
       return sorted.length > 0 ? sorted : [{time: 'Now', fb: 0, ig: 0, total: 0}];
-  }, [mentions]);
+  }, [mentions, filteredMentions, filterActive]);
 
   // Reply State
   const [openReplyId, setOpenReplyId] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [generatingReply, setGeneratingReply] = useState(false);
+
+  // Auto-scroll to reply
+  useEffect(() => {
+    if(openReplyId) {
+        // Optional: logic to scroll to element
+    }
+  }, [openReplyId]);
 
   // Load Real Data (FB + IG)
   useEffect(() => {
@@ -225,6 +243,14 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
         </div>
         
         <div className="flex gap-2">
+           <button 
+             onClick={() => setFilterActive(!filterActive)}
+             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all border ${filterActive ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
+           >
+             <Filter size={18} className={filterActive ? "fill-current" : ""}/>
+             <span>{filterActive ? "Filtro Activado" : "Filtrar por Keywords"}</span>
+           </button>
+
            <button 
              onClick={runSentimentAnalysis}
              disabled={analyzing || mentions.length === 0}
@@ -353,14 +379,14 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
                       {mentions.length > 0 && <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20">● {mentions.length} Reales</span>}
                    </div>
                    
-                   <div className="space-y-3">
-                     {mentions.length === 0 && !loadingReal && (
+                     <div className="space-y-3">
+                     {filteredMentions.length === 0 && !loadingReal && (
                         <div className="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
                             <MessageCircle size={32} className="mx-auto mb-2 opacity-50"/>
-                            <p>No hay comentarios recientes.</p>
+                            <p>{filterActive ? "No hay coincidencias con tus keywords." : "No hay comentarios recientes."}</p>
                         </div>
                      )}
-                     {mentions.map((mention) => (
+                     {filteredMentions.map((mention) => (
                        <div key={mention.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col gap-3 animate-in slide-in-from-bottom-2 duration-300">
                           <div className="flex gap-4">
                             <div className={`w-2 h-auto rounded-full shrink-0 ${mention.sentiment === 'positive' ? 'bg-emerald-500' : mention.sentiment === 'negative' ? 'bg-red-500' : 'bg-indigo-500'}`}></div>
@@ -371,7 +397,14 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
                                     {mention.sentiment}
                                   </span>
                                </div>
-                               <p className="text-slate-300 text-sm leading-snug">{mention.text}</p>
+                               <p className="text-slate-300 text-sm leading-snug">
+                                 {/* Highlight keywords */}
+                                 {mention.text.split(new RegExp(`(${keywords.join('|')})`, 'gi')).map((part, i) => 
+                                    keywords.some(k => k.toLowerCase() === part.toLowerCase()) 
+                                    ? <span key={i} className="bg-emerald-500/20 text-emerald-300 px-0.5 rounded">{part}</span> 
+                                    : part
+                                 )}
+                               </p>
                                <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                                   <div className="flex items-center gap-4">
                                     <span className="capitalize flex items-center gap-1">
