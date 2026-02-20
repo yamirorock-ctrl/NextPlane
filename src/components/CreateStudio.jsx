@@ -26,7 +26,7 @@ const STEPS = [
 function RocketIcon(props) { return <Zap {...props} /> } // Alias
 
 const CreateStudio = (props) => {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(props.selectedProduct ? 2 : 1);
   const { state, actions } = useCreateStudio(props);
 
   // Destructure state
