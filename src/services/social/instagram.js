@@ -193,17 +193,48 @@ export const instagramService = {
       // A. Account Info (Followers, Picture)
       const userUrl = `https://graph.facebook.com/v19.0/${igUserId}?fields=followers_count,media_count,username,profile_picture_url&access_token=${accessToken}`;
 
-      // B. Daily Insights (last 30 days)
-      const since = Math.floor(Date.now() / 1000) - 30 * 86400;
-      // Added: profile_views, accounts_engaged (if available, else fallback to total interactions if supported, check API docs).
-      // Note: accounts_engaged is often available for period=day.
-      const metrics = "impressions,reach,profile_views,accounts_engaged";
-      const insightsUrl = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=${metrics}&period=day&since=${since}&access_token=${accessToken}`;
+      // B. Daily Insights (last 28 days - safer window than 30)
+      const since = Math.floor(Date.now() / 1000) - 28 * 86400;
 
-      const [userRes, insightsRes] = await Promise.allSettled([
-        fetch(userUrl),
-        fetch(insightsUrl),
-      ]);
+      // Strategy: Try valid metrics from error message: reach, profile_views, accounts_engaged, total_interactions
+      // NOT sending 'impressions' as it caused error.
+
+      const fetchInsights = async (metricList) => {
+        const url = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=${metricList}&period=day&since=${since}&access_token=${accessToken}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.error) throw json.error;
+        return json;
+      };
+
+      let insightsData = null;
+      try {
+        console.log("📸 Trying Valid IG Metrics (Reach, Engaged, Profile)...");
+        // Priority: Reach + Engagement (accounts_engaged) + Profile Views
+        insightsData = await fetchInsights(
+          "reach,accounts_engaged,profile_views",
+        );
+      } catch (fullErr) {
+        console.warn(
+          "⚠️ First IG Metrics attempt failed (" +
+            fullErr.message +
+            "). Retrying with Safer Alternative...",
+        );
+        try {
+          // Fallback: Just Reach + Total Interactions (often safer)
+          insightsData = await fetchInsights("reach,total_interactions");
+        } catch (basicErr) {
+          console.warn("⚠️ Second attempt failed. Retrying REACH ONLY...");
+          try {
+            // Last Resort: Just Reach
+            insightsData = await fetchInsights("reach");
+          } catch (finalError) {
+            console.error("❌ IG Insights Critical Fail:", finalError);
+          }
+        }
+      }
+
+      const [userRes] = await Promise.allSettled([fetch(userUrl)]);
 
       let followers = 0;
       let picture = null;
@@ -219,39 +250,41 @@ export const instagramService = {
         picture = userData.profile_picture_url;
       }
 
-      // Process Insights Data
-      if (insightsRes.status === "fulfilled" && insightsRes.value.ok) {
-        const data = await insightsRes.value.json();
-        if (data.data) {
-          const impItem = data.data.find((d) => d.name === "impressions");
-          const reachItem = data.data.find((d) => d.name === "reach");
-          const engItem =
-            data.data.find((d) => d.name === "accounts_engaged") ||
-            data.data.find((d) => d.name === "total_interactions");
+      // Process Insights Data (if available)
+      if (insightsData && insightsData.data) {
+        console.log("✅ IG Insights Received:", insightsData);
 
-          if (impItem && impItem.values) {
-            chartData = impItem.values
-              .map((v, i) => {
-                totalImpressions += v.value;
+        const impItem = insightsData.data.find((d) => d.name === "impressions");
+        const reachItem = insightsData.data.find((d) => d.name === "reach");
+        // Try to find engagement metrics if they exist
+        const engItem =
+          insightsData.data.find((d) => d.name === "accounts_engaged") ||
+          insightsData.data.find((d) => d.name === "total_interactions");
 
-                const rVal = reachItem?.values[i]?.value || 0;
-                totalReach += rVal;
+        if (impItem && impItem.values) {
+          chartData = impItem.values
+            .map((v, i) => {
+              totalImpressions += v.value;
 
-                const eVal = engItem?.values[i]?.value || 0;
-                totalEngagement += eVal;
+              const rVal = reachItem?.values[i]?.value || 0;
+              totalReach += rVal;
 
-                return {
-                  name: new Date(v.end_time).toLocaleDateString("es-MX", {
-                    weekday: "short",
-                  }),
-                  views: v.value, // Impressions
-                  likes: eVal, // Engagement (proxied to 'likes' for chart consistency)
-                  reach: rVal, // Actual Reach
-                };
-              })
-              .slice(-7); // Last 7 days to match UI expectations usually
-          }
+              const eVal = engItem?.values[i]?.value || 0;
+              totalEngagement += eVal;
+
+              return {
+                name: new Date(v.end_time).toLocaleDateString("es-MX", {
+                  weekday: "short",
+                }),
+                views: v.value, // Impressions
+                likes: eVal, // Engagement (proxied)
+                reach: rVal, // Store Real Reach
+              };
+            })
+            .slice(-7);
         }
+      } else {
+        console.warn("⚠️ No IG Insights Data available to process.");
       }
 
       return {
