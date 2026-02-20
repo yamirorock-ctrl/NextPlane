@@ -42,6 +42,7 @@ const CreateStudio = (props) => {
       showPageSelector, setShowPageSelector, savedPresets, setSavedPresets,
     subtitles,
     setSubtitles,
+    voiceoverConfig, // Added this
   } = state;
 
   // Destructure actions
