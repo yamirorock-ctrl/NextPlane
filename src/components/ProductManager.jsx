@@ -171,30 +171,6 @@ const ProductManager = ({ onRelaunch }) => {
     }
   };
   
-  const handleImportWeb = async (webProduct) => {
-      if(!confirm(`¿Importar "${webProduct.name}" a tu inventario local?`)) return;
-      
-      // Save to Local DB
-      try {
-          const newProduct = {
-              name: webProduct.name,
-              price: webProduct.price,
-              image_url: webProduct.image_url,
-              category: 'Importado',
-              link: webProduct.permalink || ''
-          };
-          
-          const { data, error } = await supabase.from('products').insert([newProduct]).select().single();
-          if(error) throw error;
-          
-          setProducts(prev => [{...data, postCount: 0, lastPromoted: null}, ...prev]);
-          alert("✅ Producto Importado");
-          setActiveTab('local');
-      } catch(e) {
-          alert("Error importando: " + e.message);
-      }
-  };
-
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -320,10 +296,11 @@ const ProductManager = ({ onRelaunch }) => {
                     )}
                     {activeTab === 'web' && (
                         <button 
-                          onClick={() => handleImportWeb(product)}
-                          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transform hover:scale-105 transition-all"
+                          onClick={() => onRelaunch(product)}
+                          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg transform hover:scale-105 transition-all"
+                          title="Usar datos de la web para promocionar"
                         >
-                           <Download size={16} /> Importar
+                           <Rocket size={16} /> Relanzar
                         </button>
                     )}
                   </div>
@@ -363,11 +340,11 @@ const ProductManager = ({ onRelaunch }) => {
                   {activeTab === 'local' && (
                   <div className="mt-auto pt-4 border-t border-slate-800 grid grid-cols-2 gap-2">
                      <div className="bg-slate-950 p-2 rounded-lg text-center">
-                        <span className="block text-[10px] text-slate-500 uppercase font-bold mb-1 flex justify-center items-center gap-1"><BarChart2 size={10}/> Posts</span>
+                        <span className="text-[10px] text-slate-500 uppercase font-bold mb-1 flex justify-center items-center gap-1"><BarChart2 size={10}/> Posts</span>
                         <span className="text-white font-mono font-bold">{product.postCount || 0}</span>
                      </div>
                      <div className="bg-slate-950 p-2 rounded-lg text-center">
-                        <span className="block text-[10px] text-slate-500 uppercase font-bold mb-1 flex justify-center items-center gap-1"><Clock size={10}/> Última vez</span>
+                        <span className="text-[10px] text-slate-500 uppercase font-bold mb-1 flex justify-center items-center gap-1"><Clock size={10}/> Última vez</span>
                         <span className={`text-[10px] font-bold ${product.lastPromoted ? 'text-emerald-400' : 'text-slate-600'}`}>
                             {product.lastPromoted ? new Date(product.lastPromoted).toLocaleDateString(undefined, {month:'short', day:'numeric'}) : 'Nunca'}
                         </span>
