@@ -220,7 +220,7 @@ const CreateStudio = (props) => {
                         {/* Format Selector */}
                         <div className="glass-panel p-2 rounded-2xl flex gap-2">
                             <button onClick={() => setContentType('photo')} className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${contentType === 'photo' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:bg-slate-800/50'}`}>
-                                <ImageIcon size={18} /> Foto Estática
+                                <ImageIcon size={18} /> {selectedProduct?.gallery?.length > 1 ? "Carrusel / Fotos" : "Foto Estática"}
                             </button>
                             <button onClick={() => setContentType('video')} className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${contentType === 'video' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:bg-slate-800/50'}`}>
                                 <Video size={18} /> Video Reel
