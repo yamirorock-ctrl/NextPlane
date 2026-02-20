@@ -295,28 +295,26 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
             
             <div className="mt-8">
                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-4">Sentimiento General</h4>
-               <div className="h-[200px] w-full min-h-0 relative" style={{ height: 200, width: '100%' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={sentimentData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {sentimentData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                        itemStyle={{ color: '#fff' }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+               <div className="flex justify-center h-[200px]">
+                     <PieChart width={200} height={200}>
+                       <Pie
+                         data={sentimentData}
+                         cx="50%"
+                         cy="50%"
+                         innerRadius={60}
+                         outerRadius={80}
+                         paddingAngle={5}
+                         dataKey="value"
+                       >
+                         {sentimentData.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                         ))}
+                       </Pie>
+                       <Tooltip 
+                         contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                         itemStyle={{ color: '#fff' }}
+                       />
+                     </PieChart>
                </div>
                <div className="flex justify-center gap-4 text-xs font-bold">
                   <div className="flex items-center gap-1 text-emerald-400"><Smile size={14} /> {((sentimentData[0].value / mentions.length || 0)*100).toFixed(0)}%</div>
@@ -351,9 +349,8 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
                       </h3>
                       <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded font-bold">+12% hoy</span>
                    </div>
-                   <div className="flex-1 w-full min-h-0 relative" style={{ height: 300 }}>
-                     <ResponsiveContainer width="100%" height="100%">
-                       <BarChart data={trendData}>
+                   <div className="flex-1 w-full min-h-0 relative overflow-x-auto" style={{ height: 300 }}>
+                       <BarChart width={600} height={300} data={trendData}>
                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                          <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} />
                          <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} />
@@ -365,7 +362,6 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
                          <Bar dataKey="fb" stackId="a" name="Facebook" fill="#3b82f6" barSize={40} />
                          <Bar dataKey="ig" stackId="a" name="Instagram" fill="#ec4899" barSize={40} radius={[4, 4, 0, 0]} />
                        </BarChart>
-                     </ResponsiveContainer>
                    </div>
                 </div>
 
