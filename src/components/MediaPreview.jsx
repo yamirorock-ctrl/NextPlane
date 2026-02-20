@@ -54,7 +54,7 @@ const MediaPreview = ({ src, className, alt = "Preview", animate = false, overla
         <img 
             src={src} 
             alt={alt} 
-            className={`w-full h-full object-cover transition-transform duration-[10000ms] ease-linear will-change-transform ${active ? 'scale-135 translate-x-4 translate-y-4' : 'scale-100'}`} 
+            className={`w-full h-full object-cover transition-transform duration-10000 ease-linear will-change-transform ${active ? 'scale-135 translate-x-4 translate-y-4' : 'scale-100'}`} 
         />
         
         {/* Animated Overlay Layers (Only if animating) */}
