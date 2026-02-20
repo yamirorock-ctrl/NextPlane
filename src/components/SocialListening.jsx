@@ -134,9 +134,7 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
             if(instagramId) promises.push(instagramService.getComments(accessToken, instagramId));
             
             const results = await Promise.all(promises);
-            console.log("🔍 Social Listening Raw Results:", results);
             const all = results.flat().sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-            console.log("🔍 Social Listening Flattened & Sorted:", all);
             
             setMentions(all);
         } catch(err) {
@@ -353,7 +351,7 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
                       </h3>
                       <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded font-bold">+12% hoy</span>
                    </div>
-                   <div className="flex-1 w-full min-h-0 relative">
+                   <div className="flex-1 w-full min-h-0 relative" style={{ height: 300 }}>
                      <ResponsiveContainer width="100%" height="100%">
                        <BarChart data={trendData}>
                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
