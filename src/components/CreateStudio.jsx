@@ -14,7 +14,7 @@ import SubtitleEditor from './SubtitleEditor';
 import { 
   LayoutDashboard, Upload, Loader2, ImagePlus, Package, CheckCircle2, Trash2, ShoppingBag, 
   RefreshCw, ChevronUp, ChevronDown, Edit2, Sparkles, Tag, DollarSign, Save, X, Music, 
-  Link, Video, ImageIcon, Zap, Clock, Download, Smartphone, Sliders, Calendar, ArrowRight, ArrowLeft, Volume2, VolumeX, User 
+  Link, Video, ImageIcon, Zap, Clock, Download, Smartphone, Sliders, Calendar, ArrowRight, ArrowLeft, Volume2, VolumeX, User, Play 
 } from 'lucide-react';
 
 const STEPS = [
