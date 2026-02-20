@@ -199,8 +199,8 @@ export const instagramService = {
       // Strategy: Try valid metrics from error message: reach, profile_views, accounts_engaged, total_interactions
       // NOT sending 'impressions' as it caused error.
 
-      const fetchInsights = async (metricList) => {
-        const url = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=${metricList}&period=day&since=${since}&access_token=${accessToken}`;
+      const fetchInsights = async (metricList, extraParams = "") => {
+        const url = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=${metricList}&period=day&since=${since}&access_token=${accessToken}${extraParams}`;
         const res = await fetch(url);
         const json = await res.json();
         if (json.error) throw json.error;
@@ -213,8 +213,11 @@ export const instagramService = {
           "📸 Trying Granular IG Metrics (Reach + Likes + Comments)...",
         );
         // New Strategy: specific interaction metrics might be allowed even if 'accounts_engaged' is not.
-        // The error message explicitely listed 'likes', 'comments', 'saves' as valid.
-        insightsData = await fetchInsights("reach,likes,comments,saves");
+        // The error message requires 'metric_type=total_value' for likes, comments, saves.
+        insightsData = await fetchInsights(
+          "reach,likes,comments,saves",
+          "&metric_type=total_value",
+        );
       } catch (granularErr) {
         console.warn(
           "⚠️ Granular Metrics failed (" +
