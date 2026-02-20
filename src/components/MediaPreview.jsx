@@ -35,12 +35,26 @@ const MediaPreview = ({ src, className, alt = "Preview", animate = false, overla
   }
 
   // Image Handling with Ken Burns & Overlay
+  const [active, setActive] = React.useState(false);
+
+  React.useEffect(() => {
+    if (animate) {
+       // Reset
+       setActive(false);
+       // Trigger next frame
+       const timer = setTimeout(() => setActive(true), 50);
+       return () => clearTimeout(timer);
+    } else {
+        setActive(false);
+    }
+  }, [src, animate]);
+
   return (
     <div className={`relative overflow-hidden ${className}`}>
         <img 
             src={src} 
             alt={alt} 
-            className={`w-full h-full object-cover transition-transform duration-10000 ease-linear ${animate ? 'scale-125 translate-x-3 translate-y-3' : ''}`} 
+            className={`w-full h-full object-cover transition-transform duration-[10000ms] ease-linear will-change-transform ${active ? 'scale-135 translate-x-4 translate-y-4' : 'scale-100'}`} 
         />
         
         {/* Animated Overlay Layers (Only if animating) */}

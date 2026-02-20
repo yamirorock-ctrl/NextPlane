@@ -72,6 +72,7 @@ const CreateStudio = (props) => {
 
 
   const [showBrandManager, setShowBrandManager] = useState(false);
+  const [showAudioLibrary, setShowAudioLibrary] = useState(false);
 
   return (
     <div className="h-full flex flex-col relative overflow-hidden">
@@ -226,6 +227,42 @@ const CreateStudio = (props) => {
                             </button>
                         </div>
                         
+                        {/* Gallery Selection (for multi-image products) */}
+                        {selectedProduct?.gallery && selectedProduct.gallery.length > 1 && (
+                            <div className="glass-panel p-4 rounded-2xl">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center justify-between">
+                                    <span>Seleccionar Fotos ({selectedProduct.gallery.length})</span>
+                                    <span className="text-[10px] text-indigo-400">Clic para activar/desactivar</span>
+                                </h3>
+                                <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2">
+                                    {selectedProduct.gallery.map((img, idx) => (
+                                        <button 
+                                            key={idx}
+                                            onClick={() => {
+                                                const newGallery = selectedProduct.gallery.filter((_, i) => i !== idx);
+                                                if (newGallery.length === 0) return alert("Debes dejar al menos una imagen");
+                                                setSelectedProduct({ ...selectedProduct, gallery: newGallery });
+                                            }}
+                                            className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 group hover:ring-2 ring-indigo-500 transition-all"
+                                            title="Eliminar de esta selección"
+                                        >
+                                            <MediaPreview src={img} className="w-full h-full object-cover opacity-100 group-hover:opacity-50 transition-opacity" />
+                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                <X className="text-white drop-shadow-md" size={20} />
+                                            </div>
+                                            <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-sm" />
+                                        </button>
+                                    ))}
+                                    {/* Show deleted/hidden images? 
+                                       Actually, since we filter them out of 'gallery', we can't show them to add back easily unless we store 'originalGallery'. 
+                                       For now, this 'delete from session' approach is simple. 
+                                       If user wants them back, they can re-select product from step 1 or we need 'originalGallery'.
+                                       Let's assume for MVP, removing is key. Re-adding requires restart or stricter state.
+                                    */}
+                                </div>
+                            </div>
+                        )}
+                        
                         {/* Prompt / Instructions */}
                         <div className="glass-panel p-6 rounded-3xl space-y-4 relative group">
                             <div className="flex justify-between items-center">
@@ -336,38 +373,89 @@ const CreateStudio = (props) => {
                                      </span>
                                 </div>
                                 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-3 gap-3">
                                     <button 
-                                        className={`p-3 rounded-xl border transition-all text-left flex items-center gap-3 ${!customAudioUrl ? 'bg-indigo-600 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
-                                        onClick={() => setCustomAudioUrl(null)}
+                                        className={`p-3 rounded-xl border transition-all text-left flex flex-col items-center justify-center gap-2 ${!customAudioUrl && !audio ? 'bg-indigo-600 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
+                                        onClick={() => { setCustomAudioUrl(null); setAudio(null); }}
                                     >
                                         <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
                                             <VolumeX size={14} className="text-slate-400"/>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-xs text-white">Sin Música</p>
-                                            <p className="text-[9px] text-slate-400">Solo voz o silencio</p>
+                                        <span className="text-[10px] font-bold text-slate-300">Silencio</span>
+                                    </button>
+
+                                    <button 
+                                        className={`p-3 rounded-xl border transition-all text-left flex flex-col items-center justify-center gap-2 ${audio && !customAudioUrl ? 'bg-pink-600 border-pink-500 ring-2 ring-pink-500/20' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
+                                        onClick={() => setShowAudioLibrary(true)}
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
+                                            <Music size={14} className="text-pink-400"/>
+                                        </div>
+                                        <div className="text-center">
+                                            <span className="text-[10px] font-bold text-white block">Biblioteca</span>
+                                            {audio && <span className="text-[8px] text-pink-200 truncate max-w-[60px] block">Seleccionado</span>}
                                         </div>
                                     </button>
 
-                                    <label className={`p-3 rounded-xl border transition-all text-left flex items-center gap-3 cursor-pointer ${customAudioUrl ? 'bg-emerald-600/20 border-emerald-500 ring-2 ring-emerald-500/20' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}>
+                                    <label className={`p-3 rounded-xl border transition-all text-left flex flex-col items-center justify-center gap-2 cursor-pointer ${customAudioUrl ? 'bg-emerald-600 border-emerald-500 ring-2 ring-emerald-500/20' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}>
                                         <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
                                             <Upload size={14} className="text-emerald-400"/>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-bold text-xs text-white truncate">{customAudioUrl ? 'Archivo Subido' : 'Subir Audio'}</p>
-                                            <p className="text-[9px] text-slate-400 truncate">{customAudioUrl ? 'Listo para usar' : 'MP3/WAV Seguro'}</p>
-                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-300">Subir</span>
                                         <input type="file" className="hidden" accept="audio/*" onChange={(e) => {
                                             if(e.target.files[0]) {
                                                const url = URL.createObjectURL(e.target.files[0]);
                                                setCustomAudioUrl(url);
+                                               setAudio(null); // Clear library selection
                                             }
                                         }} />
                                     </label>
                                 </div>
                             </div>
                         </div>
+
+        {/* Audio Library Modal */}
+        {showAudioLibrary && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                <div className="bg-slate-900 rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-slate-700 shadow-2xl">
+                    <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Music className="text-pink-500" /> Biblioteca de Sonidos
+                        </h3>
+                        <button onClick={() => setShowAudioLibrary(false)} className="text-slate-400 hover:text-white">
+                            <X size={24} />
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                        <div className="grid gap-3">
+                            {trendingAudio.map((track) => (
+                                <button 
+                                    key={track.id}
+                                    onClick={() => {
+                                        setAudio(track.id);
+                                        setCustomAudioUrl(null); // Clear custom upload
+                                        setShowAudioLibrary(false);
+                                    }}
+                                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${audio === track.id ? 'bg-pink-600/20 border-pink-500' : 'bg-slate-800 border-slate-700 hover:border-pink-500/50'}`}
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center shrink-0">
+                                        <Play size={16} className="text-pink-400 ml-1" />
+                                    </div>
+                                    <div className="text-left flex-1">
+                                        <h4 className="font-bold text-white text-sm">{track.title}</h4>
+                                        <p className="text-xs text-slate-400">{track.author || 'Viral Audio'} • {track.usage || 'Trending'}</p>
+                                    </div>
+                                    {audio === track.id && <CheckCircle2 className="text-pink-500" />}
+                                </button>
+                            ))}
+                            {trendingAudio.length === 0 && (
+                                <p className="text-center text-slate-500 py-10">Cargando audios...</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
                      </div>
 
                      {/* Right: Contextual Helper (ViralCoach) & Preview */}

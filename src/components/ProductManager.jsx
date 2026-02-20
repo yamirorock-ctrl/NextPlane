@@ -102,6 +102,7 @@ const ProductManager = ({ onRelaunch }) => {
           name: p.title || p.name,
           price: p.price || 0,
           image_url: p.image_url || p.thumbnail || p.image || '', 
+          gallery: p.gallery || p.images || p.media || (p.image_url ? [p.image_url] : []),
           category: p.category_id || 'Web'
       }));
 
