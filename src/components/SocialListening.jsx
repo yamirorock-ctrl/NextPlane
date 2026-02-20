@@ -295,7 +295,7 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
             
             <div className="mt-8">
                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-4">Sentimiento General</h4>
-               <div className="h-[200px] w-full min-h-0">
+               <div className="h-[200px] w-full min-h-0 relative" style={{ height: 200, width: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
