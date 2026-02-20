@@ -134,7 +134,9 @@ const SocialListening = ({ pageId, accessToken, pageName, instagramId, setActive
             if(instagramId) promises.push(instagramService.getComments(accessToken, instagramId));
             
             const results = await Promise.all(promises);
+            console.log("🔍 Social Listening Raw Results:", results);
             const all = results.flat().sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            console.log("🔍 Social Listening Flattened & Sorted:", all);
             
             setMentions(all);
         } catch(err) {

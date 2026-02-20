@@ -48,12 +48,13 @@ export const facebookService = {
     const redirectUri = "https://viral-boost-lilac.vercel.app/";
 
     // Scopes needed:
-    // - pages_show_list, pages_read_engagement, pages_manage_posts: Basic management
+    // - pages_manage_posts: Basic management
     // - read_insights: For Analytics
     // - pages_messaging: For Inbox (DMs)
     // - instagram_basic, instagram_content_publish, instagram_manage_insights: For IG
+    // - instagram_manage_comments: CRITICAL for Social Listening (Comments)
     const scope =
-      "pages_show_list,pages_read_engagement,pages_manage_posts,read_insights,pages_messaging,instagram_basic,instagram_content_publish,instagram_manage_insights,instagram_manage_messages,pages_manage_metadata";
+      "pages_show_list,pages_read_engagement,pages_read_user_content,pages_manage_posts,read_insights,pages_messaging,instagram_basic,instagram_content_publish,instagram_manage_insights,instagram_manage_comments,instagram_manage_messages,pages_manage_metadata";
 
     const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=token&auth_type=rerequest`;
 
