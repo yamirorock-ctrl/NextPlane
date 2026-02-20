@@ -185,7 +185,8 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
   }, [slides, isAutoPlay]);
   
   const currentMedia = slides[currentSlide];
-  const isRealVideoFile = currentMedia?.match(/\.(mp4|webm|mov|ogg)$/i);
+  const currentMediaStr = typeof currentMedia === 'string' ? currentMedia : (currentMedia instanceof File ? URL.createObjectURL(currentMedia) : String(currentMedia || ''));
+  const isRealVideoFile = currentMediaStr.match(/\.(mp4|webm|mov|ogg)$/i);
   const isArtificialVideo = isVideoMode && !isRealVideoFile; 
 
   return (
