@@ -199,43 +199,50 @@ export const instagramService = {
       // Strategy: Try valid metrics from error message: reach, profile_views, accounts_engaged, total_interactions
       // NOT sending 'impressions' as it caused error.
 
-      const fetchInsights = async (metricList, extraParams = "") => {
-        const url = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=${metricList}&period=day&since=${since}&access_token=${accessToken}${extraParams}`;
+      const fetchInsights = async (metricList, params) => {
+        const url = `https://graph.facebook.com/v19.0/${igUserId}/insights?metric=${metricList}&access_token=${accessToken}${params}`;
         const res = await fetch(url);
         const json = await res.json();
         if (json.error) throw json.error;
         return json;
       };
 
-      let insightsData = null;
+      let dailyInsights = null; // Reach, Profile Views (Time Series)
+      let totalInsights = null; // Likes, Comments (Aggregates)
+
+      // 1. Fetch Daily Data (For Chart & Reach)
       try {
-        console.log(
-          "📸 Trying Granular IG Metrics (Reach + Likes + Comments)...",
-        );
-        // New Strategy: specific interaction metrics might be allowed even if 'accounts_engaged' is not.
-        // The error message requires 'metric_type=total_value' for likes, comments, saves.
-        insightsData = await fetchInsights(
-          "reach,likes,comments,saves",
-          "&metric_type=total_value",
-        );
-      } catch (granularErr) {
+        console.log("📸 Fetching IG Daily Metrics (Reach)...");
+        // Standard time-series request
+        const dailyParams = `&period=day&since=${since}`;
+        dailyInsights = await fetchInsights("reach,profile_views", dailyParams);
+      } catch (e) {
         console.warn(
-          "⚠️ Granular Metrics failed (" +
-            granularErr.message +
-            "). Retrying with Reach + Profile Views...",
+          "⚠️ Main IG Reach fetch failed. Retrying Reach-only...",
+          e.message,
         );
         try {
-          // Alternative: Reach + Profile Views (usually safe)
-          insightsData = await fetchInsights("reach,profile_views");
-        } catch (basicErr) {
-          console.warn("⚠️ Second attempt failed. Retrying REACH ONLY...");
-          try {
-            // Last Resort: Just Reach
-            insightsData = await fetchInsights("reach");
-          } catch (finalError) {
-            console.error("❌ IG Insights Critical Fail:", finalError);
-          }
+          dailyInsights = await fetchInsights(
+            "reach",
+            `&period=day&since=${since}`,
+          );
+        } catch (e2) {
+          console.error("❌ IG Reach Critical Fail:", e2);
         }
+      }
+
+      // 2. Fetch Engagement Totals (Likes, Comments)
+      try {
+        console.log("📸 Fetching IG Engagement Metrics (Likes, Comments)...");
+        // Specific request for totals as required by API error hints
+        const totalParams = `&metric_type=total_value&period=day&since=${since}`;
+        totalInsights = await fetchInsights(
+          "likes,comments,saves",
+          totalParams,
+        );
+      } catch (e) {
+        console.warn("⚠️ IG Granular Engagement fetch failed:", e.message);
+        // Fallback: Try specific subset or ignore
       }
 
       const [userRes] = await Promise.allSettled([fetch(userUrl)]);
@@ -255,25 +262,23 @@ export const instagramService = {
       }
 
       // Process Insights Data (if available)
-      if (insightsData && insightsData.data) {
-        console.log("✅ IG Insights Received:", insightsData);
+      // Process Insights Data (Using split results)
+      if (dailyInsights && dailyInsights.data) {
+        console.log("✅ IG Daily Data:", dailyInsights);
 
-        const impItem = insightsData.data.find((d) => d.name === "impressions");
-        const reachItem = insightsData.data.find((d) => d.name === "reach");
+        const impItem = dailyInsights.data.find(
+          (d) => d.name === "impressions",
+        );
+        const reachItem = dailyInsights.data.find((d) => d.name === "reach");
 
-        // Engagement Components
-        const likesItem = insightsData.data.find((d) => d.name === "likes");
-        const commentsItem = insightsData.data.find(
+        // Engagement Items (from secondary call)
+        const likesItem = totalInsights?.data?.find((d) => d.name === "likes");
+        const commentsItem = totalInsights?.data?.find(
           (d) => d.name === "comments",
         );
-        const savesItem = insightsData.data.find((d) => d.name === "saves");
+        const savesItem = totalInsights?.data?.find((d) => d.name === "saves");
 
-        // Legacy/Alternative Engagement (Fallback)
-        const engagedItem =
-          insightsData.data.find((d) => d.name === "accounts_engaged") ||
-          insightsData.data.find((d) => d.name === "total_interactions");
-
-        // KEY FIX: Use reachItem as the base for iteration if impItem is missing
+        // KEY FIX: Use reachItem as the base since we know it's from the daily series
         const baseItem = impItem || reachItem;
 
         if (baseItem && baseItem.values) {
@@ -282,40 +287,54 @@ export const instagramService = {
               // If we have impressions, use them. If not, fallback to reach for "Views"
               const viewsVal = impItem
                 ? v.value
-                : reachItem?.values[i]?.value || 0;
+                : reachItem?.values?.[i]?.value || 0;
               totalImpressions += viewsVal;
 
-              const rVal = reachItem?.values[i]?.value || 0;
+              const rVal = reachItem?.values?.[i]?.value || 0;
               totalReach += rVal;
 
-              // 2. Engagement Calculation
+              // 2. Engagement Calculation (Daily if available, or just ignore for daily chart)
+              // Since 'total_value' with 'period=day' often returns just one aggregate value for the whole period
+              // instead of a time series, trying to map [i] might be undefined.
+              // We'll try, but safeguard it.
               let eVal = 0;
-              if (likesItem || commentsItem || savesItem) {
-                // Sum granular metrics if we have them
-                const l = likesItem?.values[i]?.value || 0;
-                const c = commentsItem?.values[i]?.value || 0;
-                const s = savesItem?.values[i]?.value || 0;
-                eVal = l + c + s;
-              } else {
-                // Fallback to pre-calculated aggregate if granular failing
-                eVal = engagedItem?.values[i]?.value || 0;
-              }
+              if (likesItem?.values?.[i]) eVal += likesItem.values[i].value;
+              if (commentsItem?.values?.[i])
+                eVal += commentsItem.values[i].value;
+              if (savesItem?.values?.[i]) eVal += savesItem.values[i].value;
 
-              totalEngagement += eVal;
+              // Note: If no daily breakdown for engagement, chart engagement will be 0,
+              // but we will fix the TOTAL below.
 
               return {
                 name: new Date(v.end_time).toLocaleDateString("es-MX", {
                   weekday: "short",
                 }),
-                views: viewsVal, // Impressions or Reach
-                likes: eVal, // Engagement (proxied)
-                reach: rVal, // Store Real Reach
+                views: viewsVal,
+                likes: eVal,
+                reach: rVal,
               };
             })
             .slice(-7);
         }
+
+        // Calculate Global Total Engagement
+        // If we have granular totals, sum them up directly from the API response
+        if (totalInsights?.data) {
+          totalInsights.data.forEach((metric) => {
+            // If it's a scalar value (common with metric_type=total_value)
+            // The API might return values: [{value: 123}] (len 1) or time series.
+            if (metric.values) {
+              const metricSum = metric.values.reduce(
+                (acc, curr) => acc + (curr.value || 0),
+                0,
+              );
+              totalEngagement += metricSum;
+            }
+          });
+        }
       } else {
-        console.warn("⚠️ No IG Insights Data available to process.");
+        console.warn("⚠️ No IG Daily Insights Data available.");
       }
 
       return {
