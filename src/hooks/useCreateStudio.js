@@ -620,13 +620,31 @@ export const useCreateStudio = ({
           });
 
           console.log("☁️ Uploading Video to Storage...");
-          const videoFile = new File(
+          let videoFile = new File(
             [blob],
             `video-${selectedProduct.id}-${Date.now()}.webm`,
             { type: "video/webm" },
           );
-          publicVideoUrl = await uploadMedia(videoFile);
 
+          // CONVERT TO MP4 (Required for Instagram API)
+          try {
+            console.log("🔄 Converting to MP4 for Instagram compatibility...");
+            const convertedFile = await compressVideo(videoFile);
+            if (convertedFile) {
+              videoFile = new File(
+                [await convertedFile.arrayBuffer()],
+                videoFile.name.replace(".webm", ".mp4"),
+                { type: "video/mp4" },
+              );
+            }
+          } catch (convErr) {
+            console.warn(
+              "Conversion failed, uploading original webm (might fail on IG)",
+              convErr,
+            );
+          }
+
+          publicVideoUrl = await uploadMedia(videoFile);
           console.log("✅ Video Ready:", publicVideoUrl);
         } catch (renderError) {
           console.error("Video Pipeline Error:", renderError);
@@ -767,7 +785,7 @@ export const useCreateStudio = ({
             scheduled_date: finalDate,
             status: isScheduled ? "scheduled" : "published",
           };
-          if (supabase) {
+          if (onSchedule) {
             onSchedule({
               ...postData,
               product: selectedProduct,
@@ -815,13 +833,15 @@ export const useCreateStudio = ({
 
       const hooks = await generateViralStrategy(
         selectedProduct,
-        effectiveTone +
-          (customInstructions ? `\nExtra: ${customInstructions}` : ""),
-        apiKey,
+        effectiveTone,
+        selectedProduct.image_url,
+        customInstructions,
+        caption,
       );
 
-      if (hooks && hooks.length > 0) {
-        setHooksList(hooks);
+      if (hooks && hooks.hook_options) {
+        setHooksList(hooks.hook_options);
+        if (hooks.caption && !caption) setCaption(hooks.caption);
       } else {
         alert("No se pudieron generar hooks.");
       }
@@ -843,8 +863,8 @@ export const useCreateStudio = ({
         selectedProduct,
         hook || "Oferta increíble",
         selectedTone,
-        apiKey,
-        caption,
+        customInstructions,
+        selectedProduct.image_url,
       );
       setCaption(newCaption);
       // Auto generate tags
@@ -860,9 +880,12 @@ export const useCreateStudio = ({
     setLoadingTags(true);
     try {
       const tags = await generateHashtags(
-        contextCaption || caption,
         selectedProduct,
-        apiKey,
+        "Instagram/TikTok",
+        selectedTone,
+        selectedProduct.image_url,
+        contextCaption || caption,
+        hook,
       );
       setGeneratedHashtags(tags);
     } catch (e) {

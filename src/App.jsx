@@ -712,8 +712,8 @@ const AppContent = () => {
 
         {activeTab === 'create' && <CreateStudio 
             initialProduct={selectedProduct} 
-            initialDate={selectedDateForCreate} // Pass date
-            onPublish={handleSchedule} 
+            initialDate={selectedDateForCreate} 
+            onSchedule={handleSchedule} 
             onCancel={() => {
                 setSelectedDateForCreate(null); // Clear date
                 setActiveTab('dashboard');

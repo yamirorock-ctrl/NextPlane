@@ -25,9 +25,6 @@ const getGenerativeModel = async (genAI) => {
 
 async function tryGenerateContent(genAI, prompt) {
   const models = [
-    "gemini-3-pro-preview",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash-exp",
     "gemini-1.5-flash",
     "gemini-1.5-pro",
     "gemini-1.0-pro",
@@ -68,7 +65,7 @@ export const verifyConnection = async () => {
 export const debugModels = async (apiKey) => {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
     );
     const data = await response.json();
     if (data.error) throw new Error(data.error.message);
@@ -117,7 +114,7 @@ export const generateViralStrategy = async (
   tone = "Profesional",
   imageUrl = null,
   instructions = "",
-  contextCaption = ""
+  contextCaption = "",
 ) => {
   if (!genAI) throw new Error("AI not initialized");
 
@@ -211,7 +208,7 @@ export const generateCaption = async (
   platform,
   tone = "Profesional",
   instructions = "",
-  imageUrl = null
+  imageUrl = null,
 ) => {
   if (!genAI) throw new Error("AI not initialized");
 
@@ -271,7 +268,7 @@ export const generateHashtags = async (
   tone = "Profesional",
   imageUrl = null,
   contextCaption = "",
-  contextHooks = ""
+  contextHooks = "",
 ) => {
   if (!genAI) throw new Error("AI not initialized");
 

@@ -2,21 +2,37 @@
  * Service to handle video compression via Electron IPC
  */
 export const compressVideo = async (file) => {
-  // Check if running in Electron
-  const isElectron = window.require && window.require("electron");
+  // 1. Detect Electron Environment
+  let ipc = null;
+  let electronFs = null;
+  let electronPath = null;
+  let electronOs = null;
 
-  if (!isElectron) {
+  try {
+    if (window.electronAPI) {
+      ipc = window.electronAPI;
+    } else if (window.require) {
+      const electron = window.require("electron");
+      ipc = electron.ipcRenderer;
+      electronFs = window.require("fs");
+      electronPath = window.require("path");
+      electronOs = window.require("os");
+    }
+  } catch (e) {
+    console.warn("Electron detection failed", e);
+  }
+
+  if (!ipc) {
     console.warn(
-      "Video compression is only available in Electron app. Skipping."
+      "Video conversion is only available in Electron app. Skipping.",
     );
     return file;
   }
 
   try {
-    const { ipcRenderer } = window.require("electron");
-    const fs = window.require("fs");
-    const path = window.require("path");
-    const os = window.require("os");
+    const fs = electronFs || window.require?.("fs");
+    const path = electronPath || window.require?.("path");
+    const os = electronOs || window.require?.("os");
 
     // 1. Get Input Path (robustly)
     let inputPath = file.path;
@@ -27,7 +43,7 @@ export const compressVideo = async (file) => {
       const tempDir = os.tmpdir();
       const tempFilePath = path.join(
         tempDir,
-        `upload-temp-${Date.now()}-${file.name}`
+        `upload-temp-${Date.now()}-${file.name}`,
       );
 
       const arrayBuffer = await file.arrayBuffer();
@@ -41,10 +57,7 @@ export const compressVideo = async (file) => {
 
     // 2. Send to Main process
     // We expect the main process to optimize heavily to ensure < 50MB
-    const compressedPath = await ipcRenderer.invoke(
-      "compress-video",
-      inputPath
-    );
+    const compressedPath = await ipc.invoke("compress-video", inputPath);
 
     console.log("Compression success, new path:", compressedPath);
 
