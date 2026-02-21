@@ -11,24 +11,27 @@ export const initAI = (apiKey) => {
 const getGenerativeModel = async (genAI) => {
   // Try prioritized list of models
   const modelsToTry = [
+    "gemini-3.1-flash",
+    "gemini-3.0-flash",
+    "gemini-2.5-flash",
     "gemini-1.5-flash",
-    "gemini-1.5-flash-001",
-    "gemini-1.5-pro",
-    "gemini-1.0-pro",
-    "gemini-pro",
   ];
 
   // We return the first one effectively, but we can't keycheck without a call.
   // So we return the primary one, and the generation logic handles retries.
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  return genAI.getGenerativeModel({ model: "gemini-3.1-flash" });
 };
 
 async function tryGenerateContent(genAI, prompt) {
   const models = [
+    "gemini-3.1-flash",
+    "gemini-3.1-pro",
+    "gemini-3.0-flash",
+    "gemini-3.0-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
     "gemini-1.5-flash",
     "gemini-1.5-pro",
-    "gemini-1.0-pro",
-    "gemini-pro",
   ];
 
   let lastError;
