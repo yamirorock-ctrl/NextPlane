@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import MediaPreview from './MediaPreview';
 
-const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, onSlideChange, subtitles = [] }) => {
+const PreviewPhone = ({ contentType, content, product, audio, bgVolume = 0.8, voiceover, hooks, onSlideChange, subtitles = [] }) => {
   const isVideoMode = contentType === 'video';
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
@@ -93,7 +93,7 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
       // CORE PLAYBACK & DUCKING
       if (bgEl) {
           const hasVoice = !!voiceover; 
-          bgEl.volume = isMuted ? 0 : (hasVoice ? 0.15 : 0.8);
+          bgEl.volume = isMuted ? 0 : (hasVoice ? (bgVolume * 0.2) : bgVolume);
 
           if (isAutoPlay && !isMuted) {
               bgEl.play().catch(e => console.log("BG Autoplay blocked", e));

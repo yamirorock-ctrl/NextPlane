@@ -54,6 +54,7 @@ export const useCreateStudio = ({
   const [voiceoverConfig, setVoiceoverConfig] = useState(null); // New Voiceover State
   const [subtitles, setSubtitles] = useState([]); // Array of subtitle segments {id, text, start, end}
 
+  const [bgVolume, setBgVolume] = useState(0.8);
   const [syncing, setSyncing] = useState(false);
   const [editingImage, setEditingImage] = useState(null); // URL of image to edit
   const [showEditor, setShowEditor] = useState(false);
@@ -541,6 +542,7 @@ export const useCreateStudio = ({
         images,
         audioUrl: effectiveAudioUrl,
         audioStartTime: audioStartTime,
+        audioVolume: bgVolume,
         textOverlay: selectedHook,
         onProgress: (p) => console.log("Rendering:", p),
       });
@@ -621,6 +623,7 @@ export const useCreateStudio = ({
             images,
             audioUrl: effectiveAudioUrl,
             audioStartTime: audioStartTime,
+            audioVolume: bgVolume,
             textOverlay: selectedHook,
             onProgress: (p) => console.log("Rendering Pkg:", p),
           });
@@ -915,6 +918,8 @@ export const useCreateStudio = ({
       setAudioStartTime,
       audioDuration,
       setAudioDuration,
+      bgVolume,
+      setBgVolume,
       voiceoverConfig,
       setVoiceoverConfig, // Export new state handle
       syncing,

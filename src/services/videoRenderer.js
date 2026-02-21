@@ -6,6 +6,7 @@ export const renderVideo = async ({
   images, // Array of image/video URLs
   audioUrl, // URL of audio file (optional)
   audioStartTime = 0, // Start time in seconds
+  audioVolume = 0.8, // Vol 0-1
   duration, // Duration per slide in seconds (default 3s)
   textOverlay, // Text to display (e.g., Hook)
   onProgress, // Callback (progress 0-1)
@@ -49,7 +50,12 @@ export const renderVideo = async ({
 
       source = audioCtx.createBufferSource();
       source.buffer = audioBuffer;
-      source.connect(dest);
+
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.value = audioVolume;
+
+      source.connect(gainNode);
+      gainNode.connect(dest);
       // Loop if audio is shorter than video
       source.loop = true;
     } catch (e) {

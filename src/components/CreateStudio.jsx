@@ -36,7 +36,7 @@ const CreateStudio = (props) => {
       syncing, setSyncing, editingImage, setEditingImage, showEditor, setShowEditor,
       showCatalog, setShowCatalog, scheduleMode, setScheduleMode, scheduledDate, setScheduledDate,
       targetPlatforms, setTargetPlatforms, contentType, setContentType, hook, setHook,
-      audio, setAudio, selectedTone, setSelectedTone, customInstructions, setCustomInstructions,
+      audio, setAudio, bgVolume, setBgVolume, selectedTone, setSelectedTone, customInstructions, setCustomInstructions,
       trendingAudio, setTrendingAudio, hooksList, setHooksList, loadingHooks, setLoadingHooks,
       loadingCaption, setLoadingCaption, loadingTags, setLoadingTags, pages, setPages,
       showPageSelector, setShowPageSelector, savedPresets, setSavedPresets,
@@ -411,6 +411,25 @@ const CreateStudio = (props) => {
                                         }} />
                                     </label>
                                 </div>
+
+                                {/* VOLUME FADER */}
+                                {(audio || customAudioUrl) && (
+                                    <div className="mt-6 pt-4 border-t border-slate-800 space-y-2">
+                                        <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
+                                            <span className="flex items-center gap-1"><Volume2 size={12}/> Volumen Fondo</span>
+                                            <span>{Math.round(bgVolume * 100)}%</span>
+                                        </div>
+                                        <input 
+                                            type="range" 
+                                            min="0" 
+                                            max="1" 
+                                            step="0.01" 
+                                            value={bgVolume} 
+                                            onChange={(e) => setBgVolume(parseFloat(e.target.value))}
+                                            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -473,6 +492,7 @@ const CreateStudio = (props) => {
                                      product={selectedProduct}
                                      // Resolve audio URL: Custom or Trending ID
                                      audio={customAudioUrl || (trendingAudio.find(a => a.id === audio)?.url)}
+                                     bgVolume={bgVolume}
                                      voiceover={voiceoverConfig}
                                      subtitles={subtitles}
                                      hooks={[selectedHook || hook]}
@@ -564,7 +584,8 @@ const CreateStudio = (props) => {
                                 contentType={contentType} 
                                 content={caption} 
                                 product={selectedProduct} 
-                                audio={customAudioUrl} 
+                                audio={customAudioUrl || (trendingAudio.find(a => a.id === audio)?.url)} 
+                                bgVolume={bgVolume}
                                 voiceover={voiceoverConfig}
                                 subtitles={subtitles} 
                                 hooks={hook} 
