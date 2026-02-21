@@ -534,9 +534,12 @@ export const useCreateStudio = ({
           ? selectedProduct.gallery
           : [selectedProduct.image_url];
 
+      const effectiveAudioUrl =
+        customAudioUrl || trendingAudio.find((a) => a.id === audio)?.url;
+
       const blob = await renderVideo({
         images,
-        audioUrl: customAudioUrl,
+        audioUrl: effectiveAudioUrl,
         audioStartTime: audioStartTime,
         textOverlay: selectedHook,
         onProgress: (p) => console.log("Rendering:", p),
@@ -611,9 +614,12 @@ export const useCreateStudio = ({
               ? selectedProduct.gallery
               : [selectedProduct.image_url];
 
+          const effectiveAudioUrl =
+            customAudioUrl || trendingAudio.find((a) => a.id === audio)?.url;
+
           const blob = await renderVideo({
             images,
-            audioUrl: customAudioUrl,
+            audioUrl: effectiveAudioUrl,
             audioStartTime: audioStartTime,
             textOverlay: selectedHook,
             onProgress: (p) => console.log("Rendering Pkg:", p),

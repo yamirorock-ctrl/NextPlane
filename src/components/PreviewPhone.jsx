@@ -64,6 +64,7 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
       } else {
           if (!bgAudioRef.current) {
               bgAudioRef.current = new Audio(audio);
+              bgAudioRef.current.crossOrigin = "anonymous";
               bgAudioRef.current.loop = true;
           } else if (bgAudioRef.current.src !== audio) {
               bgAudioRef.current.src = audio;
@@ -74,6 +75,7 @@ const PreviewPhone = ({ contentType, content, product, audio, voiceover, hooks, 
       if (voiceover?.type === 'audio-file' && voiceover.url) {
            if (!voiceAudioRef.current) {
                voiceAudioRef.current = new Audio(voiceover.url);
+               voiceAudioRef.current.crossOrigin = "anonymous";
            } else if (voiceAudioRef.current.src !== voiceover.url) {
                voiceAudioRef.current.src = voiceover.url;
            }

@@ -1,9 +1,39 @@
 const MOCK_TRENDING_AUDIO = [
-  { id: 1, name: "Funny Jazz - Viral Cut", uses: "1.2M", trending: true },
-  { id: 2, name: "Capybara Song", uses: "850k", trending: false },
-  { id: 3, name: "Aesthetic Morning", uses: "500k", trending: true },
-  { id: 4, name: "Sigma Phonk", uses: "2.1M", trending: true },
-  { id: 5, name: "Wes Anderson Style", uses: "300k", trending: false },
+  {
+    id: 1,
+    title: "Funny Jazz - Viral Cut",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    uses: "1.2M",
+    trending: true,
+  },
+  {
+    id: 2,
+    title: "Capybara Song - Remix",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    uses: "850k",
+    trending: false,
+  },
+  {
+    id: 3,
+    title: "Aesthetic Morning - Chill",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    uses: "500k",
+    trending: true,
+  },
+  {
+    id: 4,
+    title: "Sigma Phonk - Bass Boosted",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    uses: "2.1M",
+    trending: true,
+  },
+  {
+    id: 5,
+    title: "Wes Anderson - Symphony",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    uses: "300k",
+    trending: false,
+  },
 ];
 
 export const tiktokService = {
